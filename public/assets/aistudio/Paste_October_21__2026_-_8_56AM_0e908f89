@@ -1,0 +1,1001 @@
+Local Education And Economic Devlopment Organization (LEEDO)																									
+HEAD OFFICE ASSET LIST-2026																									
+"Sl. 
+ No."	Location ID	Location Name	Item Name	Item Description	Asset ID Number	Qty.	ASSET GROUP 	Acquisition Date	Acquisition Cost in BDT	Current Holder	Assset Status	Asset Availability as per HQ record	Items Present Conditions	Present Location (Room Name)	Comments	Final Status	Dispose Date (If Dispose))								
+1	LEEDO0001	Head Office	PC	New	LEEDO/HO/PC-001	1	Office Equipment	Nov-2025	36000	LEEDO	Active	Yes	Runing 	ED sir room											
+2	LEEDO0002	Head Office	PC	New	LEEDO/HO/PC-002	1	Office Equipment	Nov-2025	36000	LEEDO	Active	Yes	Runing 	Accounts Room											
+3	LEEDO0003	Head Office	PC	New	LEEDO/HO/PC-003	1	Office Equipment	Nov-2025	36000	LEEDO	Active	Yes	Runing 	Accounts Room											
+4	LEEDO0004	Head Office	PC	New	LEEDO/HO/PC-004	1	Office Equipment	Nov-2025	36000	LEEDO	Active	Yes	Runing 	Documention Room											
+5	LEEDO0005	Head Office	PC	Old	LEEDO/HO/PC-005	1	Office Equipment	Nov-2025	36000	LEEDO	Active	Yes	Runing 	P/H Manager Room											
+6	LEEDO0006	Head Office	PC	Old	LEEDO/HO/PC-006	1	Office Equipment	Nov-2025	36000	LEEDO	Active	Yes	Runing 	P/H Manager Room											
+7	LEEDO0007	Head Office	PC	Old	LEEDO/HO/PC-007	1	Office Equipment	Nov-2025	36000	LEEDO	Active	Yes	Runing 	P/H Manager Room											
+8	LEEDO0008	Head Office	PC	Damage	LEEDO/HO/PC-008	1	Office Equipment	Nov-2025	36000	LEEDO	Inactive	No	unusable	logistic Room											
+9	LEEDO0009	Head Office	PC	Damage	LEEDO/HO/PC-009	1	Office Equipment	Nov-2025	28000	LEEDO	Inactive	No	unusable	logistic Room											
+10	LEEDO0010	Head Office	PC	Damage	LEEDO/HO/PC-010	1	Office Equipment	Nov-2025	28000	LEEDO	Inactive	No	unusable	logistic Room											
+11	LEEDO0011	Head Office	Monitor	New	LEEDO/HO/M-0001	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	ED sir room											
+12	LEEDO0012	Head Office	Monitor	New	LEEDO/HO/M-0002	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+13	LEEDO0013	Head Office	Monitor	New	LEEDO/HO/M-0003	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+14	LEEDO0014	Head Office	Monitor	New	LEEDO/HO/M-0004	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+15	LEEDO0015	Head Office	Monitor	New	LEEDO/HO/M-0005	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	P/H Manager Room											
+16	LEEDO0016	Head Office	Monitor	New	LEEDO/HO/M-0006	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	P/H Manager Room											
+17	LEEDO0017	Head Office	Monitor	New	LEEDO/HO/M-0007	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	P/H Manager Room											
+18	LEEDO0018	Head Office	Monitor	Old	LEEDO/HO/M-0008	1	Office Equipment	Nov-2025		LEEDO	Inactive	No	unusable	logistic Room											
+19	LEEDO0011	Head Office	Laptop	New	LEEDO/HO/L-001	1	Office Equipment	Nov-2025	48000	LEEDO	Active	Yes	Runing 	PH Manager											
+20	LEEDO0012	Head Office	Laptop	New	LEEDO/HO/L-002	1	Office Equipment	Nov-2025	48000	LEEDO	Active	Yes	Runing 	HR Room											
+13	LEEDO0013	Head Office	Laptop	New	LEEDO/HO/L-003	1	Office Equipment	Nov-2025	48000	LEEDO	Active	Yes	Runing 	Documention Room											
+14	LEEDO0014	Head Office	Laptop	New	LEEDO/HO/L-004	1	Office Equipment	Nov-2025	48000	LEEDO	Active	Yes	Runing 	Documention Room											
+15	LEEDO0015	Head Office	Laptop	Old	LEEDO/HO/L-005	1	Office Equipment	Nov-2025	48000	LEEDO	Active	Yes	Runing 	Documention Room											
+16	LEEDO0016	Head Office	Laptop	Old	LEEDO/HO/L-006	1	Office Equipment	Nov-2025	48000	LEEDO	Active	Yes	Runing 	Midia Room											
+17	LEEDO0017	Head Office	Laptop	Old	LEEDO/HO/L-007	1	Office Equipment	Nov-2025		LEEDO	Inactive	Yes	Unusable	logistic Room											
+18	LEEDO0018	Head Office	Printer (Color)	New	LEEDO/HO/PNT-001	1	Office Equipment	Nov-2025	12043	LEEDO	Active	Yes	Runing 	Accounts Room											
+19	LEEDO0019	Head Office	Printer (Color)	New	LEEDO/HO/PNT-002	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+20	LEEDO0020	Head Office	Printer	Old	LEEDO/HO/PNT-003	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+21	LEEDO0021	Head Office	Printer	Old	LEEDO/HO/PNT-004	1	Office Equipment	Nov-2025	12043	LEEDO	Active	Yes	Runing 	PH Manager Room											
+22	LEEDO0022	Head Office	Printer	Old	LEEDO/HO/PNT-005	1	Office Equipment	Nov-2025	12043	LEEDO	Active	Yes	Runing 	ED Sir Room											
+23	LEEDO0023	Head Office	Printer (Color)	New	LEEDO/HO/PNT-006	1	Office Equipment	Nov-2025	12043	LEEDO	Active	Yes	Runing 	HR Room											
+24	LEEDO0024	Head Office	Big Stand Fan (Charger)	New	LEEDO/HO/SCF-001	1	Electrical & Electronics item 	Nov-2025	2000	LEEDO	Active	Yes	Runing 	ED Sir Room											
+25	LEEDO0025	Head Office	Small Stand Fan (Charger)	Old	LEEDO/HO/SCF-002	1	Electrical & Electronics item 	Nov-2025	12500	LEEDO	Active	Yes	Runing 	ED Sir Room											
+26	LEEDO0026	Head Office	Celling Fan	New	LEEDO/OH/CF-0001	1	Electrical & Electronics item 	Nov-2025	5500	LEEDO	Active	Yes	Runing 	Accounts Room											
+27	LEEDO0027	Head Office	Celling Fan	New	LEEDO/OH/CF-0002	1	Electrical & Electronics item 	Nov-2025	5500	LEEDO	Active	Yes	Runing 	HR Room											
+28	LEEDO0028	Head Office	Celling Fan	New	LEEDO/OH/CF-0003	1	Electrical & Electronics item 	Nov-2025	5500	LEEDO	Active	Yes	Runing 	ED Sir Room											
+29	LEEDO0029	Head Office	Celling Fan	New	LEEDO/OH/CF-0004	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+30	LEEDO0030	Head Office	Celling Fan	New	LEEDO/OH/CF-0005	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+31	LEEDO0031	Head Office	Celling Fan	New	LEEDO/OH/CF-0006	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+32	LEEDO0032	Head Office	Celling Fan	New	LEEDO/OH/CF-0007	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	logistic Room											
+33	LEEDO0033	Head Office	Celling Fan	New	LEEDO/OH/CF-0008	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+34	LEEDO0034	Head Office	Celling Fan	New	LEEDO/OH/CF-0009	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+35	LEEDO0035	Head Office	Celling Fan	New	LEEDO/OH/CF-0010	1	Electrical & Electronics item 	Nov-2025	5500	LEEDO	Active	Yes	Runing 	Dyning Room											
+36	LEEDO0036	Head Office	Celling Fan	Old	LEEDO/OH/CF-0011	1	Electrical & Electronics item 	Nov-2025	5500	LEEDO	Active	Yes	Runing 	PH Manager											
+37	LEEDO0037	Head Office	Celling Fan	Old	LEEDO/OH/CF-0012	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	PH Manager											
+38	LEEDO0038	Head Office	CC TV	New	LEEDO/HO/CCTV-01	1	IT Accessories	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+39	LEEDO0039	Head Office	CC TV	New	LEEDO/HO/CCTV-02	1	IT Accessories	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+40	LEEDO0040	Head Office	CC TV	New	LEEDO/HO/CCTV-03	1	IT Accessories	Nov-2025	3500	LEEDO	Active	Yes	Runing 	Logistic Room											
+41	LEEDO0041	Head Office	CC TV	New	LEEDO/HO/CCTV-04	1	IT Accessories	Nov-2025	3500	LEEDO	Active	Yes	Runing 	ED Sir Room											
+42	LEEDO0042	Head Office	CC TV	New	LEEDO/HO/CCTV-05	1	IT Accessories	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+43	LEEDO0043	Head Office	CC TV	New	LEEDO/HO/CCTV-06	1	IT Accessories	Nov-2025		LEEDO	Active	Yes	Runing 	P/H Manger Room											
+44	LEEDO0044	Head Office	CC TV	New	LEEDO/HO/CCTV-07	1	IT Accessories	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+45	LEEDO0045	Head Office	CC TV	New	LEEDO/HO/CCTV-08	1	IT Accessories	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+46	LEEDO0046	Head Office	CC TV	New	LEEDO/HO/CCTV-09	1	IT Accessories	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+47	LEEDO0047	Head Office	CC TV	New	LEEDO/HO/CCTV-10	1	IT Accessories	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+48	LEEDO0048	Head Office	Freeze	Old	LEEDO/HO/FREEZE-01	1	Electrical & Electronics item 	Nov-2025	36000	LEEDO	Active	Yes	Runing 	Kitchen Room											
+49	LEEDO0049	Head Office	TAB	New	LEEDO/HO/TAB-1	1	Communication Equipment 	Nov-2025	8000	LEEDO	Active	Yes	Runing 	logistic Room											
+50	LEEDO0050	Head Office	TAB	New	LEEDO/HO/TAB-2	1	Communication Equipment 	Nov-2025	8000	LEEDO	Active	Yes	Runing 	ED Sir Room											
+51	LEEDO0051	Head Office	TABLE	New	LEEDO/HO/TABLE-0001	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+52	LEEDO0052	Head Office	TABLE	New	LEEDO/HO/TABLE-0002	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+53	LEEDO0053	Head Office	TABLE	New	LEEDO/HO/TABLE-0003	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+54	LEEDO0054	Head Office	TABLE	New	LEEDO/HO/TABLE-0004	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+55	LEEDO0055	Head Office	TABLE	Old	LEEDO/HO/TABLE-0005	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+56	LEEDO0056	Head Office	TABLE	Old	LEEDO/HO/TABLE-0006	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+57	LEEDO0057	Head Office	TABLE	Old	LEEDO/HO/TABLE-0007	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+58	LEEDO0058	Head Office	TABLE	Old	LEEDO/HO/TABLE-0008	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	PH Manager											
+59	LEEDO0059	Head Office	TABLE	Old	LEEDO/HO/TABLE-0009	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Midia Room											
+60	LEEDO0060	Head Office	TABLE	Old	LEEDO/HO/TABLE-0010	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+61	LEEDO0061	Head Office	TABLE	New	LEEDO/HO/TABLE-0011	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	ED Sir Room											
+62	LEEDO0062	Head Office	TABLE	New	LEEDO/HO/TABLE-0012	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+63	LEEDO0063	Head Office	Dyning Table	Old	LEEDO/HO/TABLE-0013	1	Office Furniture	Nov-2025	40000	LEEDO	Active	Yes	Runing 	H/O dyning Room											
+64	LEEDO0064	Head Office	Tea Table 	New	LEEDO/HO/TABLE-0001	1	Office Furniture	Nov-2025	5000	LEEDO	Active	Yes	Runing 	Guest Room											
+65	LEEDO0065	Head Office	Chair	New	LEEDO/HO/CHAIR-0001	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+66	LEEDO0066	Head Office	Chair	New	LEEDO/HO/CHAIR-0002	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+67	LEEDO0067	Head Office	Chair	Old	LEEDO/HO/CHAIR-0003	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+68	LEEDO0068	Head Office	Chair	New	LEEDO/HO/CHAIR-0004	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+69	LEEDO0069	Head Office	Chair	New	LEEDO/HO/CHAIR-0005	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+70	LEEDO0070	Head Office	Chair	New	LEEDO/HO/CHAIR-0006	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+71	LEEDO0071	Head Office	Chair	New	LEEDO/HO/CHAIR-0007	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+72	LEEDO0072	Head Office	Chair	New	LEEDO/HO/CHAIR-0008	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+73	LEEDO0073	Head Office	Chair	New	LEEDO/HO/CHAIR-0009	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+74	LEEDO0074	Head Office	Chair	New	LEEDO/HO/CHAIR-0010	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+75	LEEDO0075	Head Office	Chair	Old	LEEDO/HO/CHAIR-0011	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	PH Manager Room											
+76	LEEDO0076	Head Office	Chair	Old	LEEDO/HO/CHAIR-0012	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	PH Manager Room											
+77	LEEDO0077	Head Office	Chair	Old	LEEDO/HO/CHAIR-0013	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	PH Manager Room											
+78	LEEDO0078	Head Office	Chair	Old	LEEDO/HO/CHAIR-0014	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	PH Manager Room											
+79	LEEDO0079	Head Office	Chair	New	LEEDO/HO/CHAIR-0015	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+80	LEEDO0080	Head Office	Chair	Old	LEEDO/HO/CHAIR-0016	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+81	LEEDO0081	Head Office	Chair	New	LEEDO/HO/CHAIR-0017	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+82	LEEDO0082	Head Office	Chair	Old	LEEDO/HO/CHAIR-0018	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+83	LEEDO0083	Head Office	Chair	Old	LEEDO/HO/CHAIR-0019	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+84	LEEDO0084	Head Office	Chair	New	LEEDO/HO/CHAIR-0020	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+85	LEEDO0085	Head Office	Chair	New	LEEDO/HO/CHAIR-0021	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+86	LEEDO0086	Head Office	Chair	Old	LEEDO/HO/CHAIR-0022	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+87	LEEDO0087	Head Office	Chair	Old	LEEDO/HO/CHAIR-0023	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+88	LEEDO0088	Head Office	Chair	New	LEEDO/HO/CHAIR-0024	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+89	LEEDO0089	Head Office	Chair	Old	LEEDO/HO/CHAIR-0025	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+90	LEEDO0090	Head Office	File Cabinet	New	LEEDO/HO/F.CABINET-001	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+91	LEEDO0091	Head Office	File Cabinet	Old	LEEDO/HO/F.CABINET-002	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+92	LEEDO0092	Head Office	File Cabinet	Old	LEEDO/HO/F.CABINET-003	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+93	LEEDO0093	Head Office	File Cabinet	Old	LEEDO/HO/F.CABINET-004	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+94	LEEDO0094	Head Office	File Cabinet	New	LEEDO/HO/F.CABINET-005	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+95	LEEDO0095	Head Office	File Cabinet	New	LEEDO/HO/F.CABINET-006	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+96	LEEDO0096	Head Office	File Cabinet	Old	LEEDO/HO/F.CABINET-007	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+97	LEEDO0097	Head Office	File Cabinet	Old	LEEDO/HO/F.CABINET-008	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+98	LEEDO0098	Head Office	File Cabinet	Old	LEEDO/HO/F.CABINET-009	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+99	LEEDO0099	Head Office	File Cabinet	Old	LEEDO/HO/F.CABINET-010	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+100	LEEDO0100	Head Office	File Cabinet	Old	LEEDO/HO/F.CABINET-011	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+101	LEEDO0101	Head Office	File Cabinet	Old	LEEDO/HO/F.CABINET-012	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	P/H Manager Room											
+102	LEEDO0102	Head Office	Multiplug	New	LEEDO/HO/Multiplug-0001	1	Electrical & Electronics item 	Nov-2025	700	LEEDO	Active	Yes	Runing 	Accounts Room											
+103	LEEDO0103	Head Office	Multiplug	Old	LEEDO/HO/Multiplug-0002	1	Electrical & Electronics item 	Nov-2025	700	LEEDO	Active	Yes	Runing 	Accounts Room											
+104	LEEDO0104	Head Office	Multiplug	New	LEEDO/HO/Multiplug-0003	1	Electrical & Electronics item 	Nov-2025	350	LEEDO	Active	Yes	Runing 	HR Room											
+105	LEEDO0105	Head Office	Multiplug	New	LEEDO/HO/Multiplug-0004	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+106	LEEDO0106	Head Office	Multiplug	New	LEEDO/HO/Multiplug-0005	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	PH Manager Room											
+107	LEEDO0107	Head Office	Multiplug	Old	LEEDO/HO/Multiplug-0006	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	ED Sir Room											
+108	LEEDO0108	Head Office	Multiplug	New	LEEDO/HO/Multiplug-0007	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+109	LEEDO0109	Head Office	Curtain	New	LEEDO/HO/CURTAIN-0001	2	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+110	LEEDO0110	Head Office	Curtain	New	LEEDO/HO/CURTAIN-0002	6	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+111	LEEDO0111	Head Office	Curtain	New	LEEDO/HO/CURTAIN-0003	6	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	PH Manager Room											
+112	LEEDO0112	Head Office	Curtain	New	LEEDO/HO/CURTAIN-0004	6	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+113	LEEDO0113	Head Office	Curtain	New	LEEDO/HO/CURTAIN-0005	6	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+114	LEEDO0114	Head Office	Curtain	New	LEEDO/HO/CURTAIN-0006	4	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	ED Sir Room											
+115	LEEDO0115	Head Office	Curtain	New	LEEDO/HO/CURTAIN-0006	2	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+116	LEEDO0116	Head Office	Light	New	LEEDO/HO/LIGHT 1	2	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	ED Sir Room											
+117	LEEDO0117	Head Office	Light	New	LEEDO/HO/LIGHT 2	2	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+118	LEEDO0118	Head Office	Light	New	LEEDO/HO/LIGHT 3	2	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+119	LEEDO0119	Head Office	Light	New	LEEDO/HO/LIGHT 4	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Documention Room											
+120	LEEDO0120	Head Office	Light	New	LEEDO/HO/LIGHT 5	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	PH Manager Room											
+121	LEEDO0121	Head Office	Light	New	LEEDO/HO/LIGHT 6	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+122	LEEDO0122	Head Office	Light	New	LEEDO/HO/LIGHT 7	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Kitchen Room											
+123	LEEDO0123	Head Office	Light	New	LEEDO/HO/LIGHT 8	2	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+124	LEEDO0124	Head Office	Almari	New	LEEDO/HO/ALMARI 1	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	ED Sir Room											
+125	LEEDO0125	Head Office	Almari	New	LEEDO/HO/ALMARI 2	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+126	LEEDO0126	Head Office	File Cabinet-Steel	New	LEEDO/HO/F.C.STEEL-0001	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room 											
+127	LEEDO0127	Head Office	Photocopy Machine	New	LEEDO/HO/P.Copy Machine-001	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+128	LEEDO0128	Head Office	UPS	Old	LEEDO/HO/UPS	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+129	LEEDO0129	Head Office	Scanner	Old	LEEDO/HO/SCANNER-001	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+130	LEEDO0130	Head Office	Scanner	Old	LEEDO/HO/SCANNER-002	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+131	LEEDO0131	Head Office	Calling Bell	Old	LEEDO/HO/C.BELL-0001	1	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	ED Sir Room											
+132	LEEDO0132	Head Office	Calling Bell	Old	LEEDO/HO/C.BELL 2	1	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	Out Side Door											
+133	LEEDO0133	Head Office	Finger Machine	New	LEEDO/HO/F.MACHINE-01	1	IT Accessories	Nov-2025		LEEDO	Active	Yes	Runing 	Dyning Room											
+134	LEEDO0134	Head Office	Shoe Reck	New	LEEDO/HO/S.RECK-0001	1	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	Out Side Door											
+135	LEEDO0135	Head Office	Shoe Reck	Old	LEEDO/HO/S.RECK-0002	1	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	Out Side Door											
+136	LEEDO0136	Head Office	Telephone	New	LEEDO/HO/Telephone-0001	1	Communication Equipment 	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+137	LEEDO0137	Head Office	Router	New	LEEDO/HO/ROUTER-0001	1	Communication Equipment 	Nov-2025		LEEDO	Active	Yes	Runing 	Account side											
+138	LEEDO0138	Head Office	Router	New	LEEDO/HO/ROUTER-0002	1	Communication Equipment 	Nov-2025		LEEDO	Active	Yes	Runing 	HR Side											
+139	LEEDO0139	Head Office	Router	Damage	LEEDO/HO/ROUTER-0003	1	Communication Equipment 	Nov-2025		LEEDO	Inactive	No	Unusable	Logistic Room											
+140	LEEDO0140	Head Office	Electtric Kettle	New	LEEDO/HO/E.Kettle-0001	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	Kitchen Room											
+141	LEEDO0141	Head Office	Electtric Kettle	Old	LEEDO/HO/E.Kettle-0002	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	No	Unusable	Not Found											
+142	LEEDO0142	Head Office	Electtric Kettle	Damage	LEEDO/HO/E.Kettle-0003	1	Electrical & Electronics item 	Nov-2025		LEEDO	Inactive	No	Unusable	Not Found											
+143	LEEDO0143	Head Office	White Board 	Old	LEEDO/HO/W.BOARD-0001	1	Office Stationery Items	Nov-2025		LEEDO	Active	Yes	Runing 	HR side 											
+144	LEEDO0144	Head Office	White Board Stand	New	LEEDO/HO/W.B.STAND-0001	1	Office Stationery Items	Nov-2025		LEEDO	Active	Yes	Runing 	HR side 											
+145	LEEDO0145	Head Office	Lock 	New	LEEDO/HO/LOCK-0001	1	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	ED Room											
+146	LEEDO0146	Head Office	Lock 	New	LEEDO/HO/LOCK-0002	1	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	Accounts Room											
+147	LEEDO0147	Head Office	Lock 	New	LEEDO/HO/LOCK-0003	1	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+148	LEEDO0148	Head Office	Lock 	New	LEEDO/HO/LOCK-0004	1	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+149	LEEDO0149	Head Office	Lock 	New	LEEDO/HO/LOCK-0005	1	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	Main Door											
+150	LEEDO0150	Head Office	Sofa	New	LEEDO/HO/SOFA SET-0001	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+151	LEEDO0151	Head Office	Sofa	Old	LEEDO/HO/SOFA SET-0002	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	Guest Room											
+152	LEEDO0152	Head Office	Sofa	Old	LEEDO/HO/SOFA SET-0003	1	Office Furniture	Nov-2025		LEEDO	Active	Yes	Runing 	ED Room											
+153	LEEDO0153	Head Office	IPS	New	LEEDO/HO/IPS-0001	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	Logistic Room											
+154	LEEDO0154	Head Office	IPS	New	LEEDO/HO/IPS-0002	1	Office Equipment	Nov-2025		LEEDO	Active	Yes	Runing 	HR side 											
+155	LEEDO0155	Head Office	Water Filter	New	LEEDO/HO/W.FILTER	1	Others Fixed Asset	Nov-2025		LEEDO	Active	Yes	Runing 	HR Side 											
+156	LEEDO0156	Head Office	Phone Sim	New	LEEDO/HO/SIM1	1	Communication Equipment 	Nov-2025		LEEDO	Active	Yes	Runing 	HR Room											
+157	LEEDO0157	Head Office	TV	New	LEEDO/HO/TV1	1	Electrical & Electronics item 	Nov-2025		LEEDO	Active	Yes	Runing 	ED Room											
+158	LEEDO0158	Head Office	Moblie Phone 	New	LEEDO/HO/M.PHONE	1	Communication Equipment 	Nov-2025		LEEDO	Active	Yes	Runing 	LOgistic Room											
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									
+																									

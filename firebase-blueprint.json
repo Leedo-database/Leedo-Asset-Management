@@ -1,0 +1,163 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "LEEDO staff member profile with RBAC roles and area assignments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "employeeId": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["head_office", "hr_admin", "asset_manager", "area_incharge", "field_staff"] },
+        "assignedAreaIds": { "type": "array" },
+        "designation": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "isFirstLogin": { "type": "boolean" },
+        "active": { "type": "boolean" },
+        "canApproveDisposal": { "type": "boolean" },
+        "canManageAssets": { "type": "boolean" },
+        "canManageStaff": { "type": "boolean" },
+        "canManageAreas": { "type": "boolean" },
+        "canUpdateOrgInfo": { "type": "boolean" }
+      },
+      "required": ["id", "employeeId", "name", "email", "role", "active"]
+    },
+    "Area": {
+      "title": "Area",
+      "description": "LEEDO operating center, shelter, or school facility",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 16 },
+        "nameEn": { "type": "string", "maxLength": 128 },
+        "nameBn": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["Shelter", "SUS", "School", "Vocational", "Head Office", "Other"] },
+        "addressEn": { "type": "string", "maxLength": 256 },
+        "addressBn": { "type": "string", "maxLength": 256 },
+        "contactPerson": { "type": "string", "maxLength": 128 },
+        "contactPhone": { "type": "string", "maxLength": 32 },
+        "active": { "type": "boolean" }
+      },
+      "required": ["id", "code", "nameEn", "type", "active"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "LEEDO physical asset registered and tracked across centers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "titleEn": { "type": "string", "maxLength": 256 },
+        "titleBn": { "type": "string", "maxLength": 256 },
+        "category": { "type": "string", "enum": ["IT_Electronics", "Furniture", "Vehicle", "Kitchenware", "Educational", "Appliances", "Medical", "Facility"] },
+        "acquisitionType": { "type": "string", "enum": ["Purchased", "Donation"] },
+        "donorOrVendor": { "type": "string", "maxLength": 128 },
+        "purchaseDate": { "type": "string", "maxLength": 32 },
+        "purchaseValueBDT": { "type": "number" },
+        "initialCondition": { "type": "string", "enum": ["New", "Used"] },
+        "usabilityStatus": { "type": "string", "enum": ["Usable", "Repairable", "Unusable", "Disposed"] },
+        "assignedAreaId": { "type": "string", "maxLength": 128 },
+        "specificRoom": { "type": "string", "maxLength": 128 },
+        "serialNumber": { "type": "string", "maxLength": 128 },
+        "remarks": { "type": "string", "maxLength": 512 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 },
+        "transferStatus": { "type": "string", "enum": ["none", "in_transit", "transferred"] }
+      },
+      "required": ["id", "titleEn", "category", "acquisitionType", "purchaseDate", "purchaseValueBDT", "usabilityStatus", "assignedAreaId"]
+    },
+    "AssetTransfer": {
+      "title": "AssetTransfer",
+      "description": "Inter-center movement and gate pass voucher record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "voucherNumber": { "type": "string", "maxLength": 64 },
+        "assetId": { "type": "string", "maxLength": 128 },
+        "assetTitle": { "type": "string", "maxLength": 256 },
+        "sourceAreaId": { "type": "string", "maxLength": 128 },
+        "destinationAreaId": { "type": "string", "maxLength": 128 },
+        "dispatchDateTime": { "type": "string", "maxLength": 64 },
+        "dispatchCondition": { "type": "string", "enum": ["Good", "Damaged", "Repairable", "Missing parts"] },
+        "dispatchByUserId": { "type": "string", "maxLength": 128 },
+        "dispatchByUserName": { "type": "string", "maxLength": 128 },
+        "courierOrDriver": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["In-Transit", "Received"] },
+        "receiveDateTime": { "type": "string", "maxLength": 64 },
+        "receiveCondition": { "type": "string", "enum": ["Good", "Damaged", "Missing parts"] },
+        "receivedByUserId": { "type": "string", "maxLength": 128 },
+        "receivedByUserName": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "voucherNumber", "assetId", "sourceAreaId", "destinationAreaId", "status"]
+    },
+    "DisposalRequest": {
+      "title": "DisposalRequest",
+      "description": "Asset write-off or disposal request for HO evaluation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "assetId": { "type": "string", "maxLength": 128 },
+        "assetTitle": { "type": "string", "maxLength": 256 },
+        "category": { "type": "string", "maxLength": 64 },
+        "assignedAreaId": { "type": "string", "maxLength": 128 },
+        "purchaseValueBDT": { "type": "number" },
+        "currentBookValueBDT": { "type": "number" },
+        "requestedByUserId": { "type": "string", "maxLength": 128 },
+        "requestedByUserName": { "type": "string", "maxLength": 128 },
+        "requestDate": { "type": "string", "maxLength": 32 },
+        "reasonEn": { "type": "string", "maxLength": 512 },
+        "damageDetails": { "type": "string", "maxLength": 512 },
+        "status": { "type": "string", "enum": ["Pending HO Approval", "Approved", "Rejected"] },
+        "proposedAction": { "type": "string", "maxLength": 64 },
+        "reviewComments": { "type": "string", "maxLength": 512 }
+      },
+      "required": ["id", "assetId", "assignedAreaId", "purchaseValueBDT", "currentBookValueBDT", "status"]
+    },
+    "OrganizationProfile": {
+      "title": "OrganizationProfile",
+      "description": "LEEDO official institutional profile and configurations",
+      "type": "object",
+      "properties": {
+        "nameEn": { "type": "string", "maxLength": 256 },
+        "nameBn": { "type": "string", "maxLength": 256 },
+        "shortName": { "type": "string", "maxLength": 32 },
+        "logoUrl": { "type": "string", "maxLength": 512 },
+        "addressEn": { "type": "string", "maxLength": 256 },
+        "addressBn": { "type": "string", "maxLength": 256 },
+        "email": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 64 },
+        "website": { "type": "string", "maxLength": 128 },
+        "registrationNo": { "type": "string", "maxLength": 64 },
+        "executiveDirector": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["nameEn", "shortName", "email"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Staff member accounts and access permissions"
+    },
+    "/areas/{areaId}": {
+      "schema": { "$ref": "#/entities/Area" },
+      "description": "LEEDO operative centers, shelters, and schools"
+    },
+    "/assets/{assetId}": {
+      "schema": { "$ref": "#/entities/Asset" },
+      "description": "Physical organization assets and lifecycle status"
+    },
+    "/transfers/{transferId}": {
+      "schema": { "$ref": "#/entities/AssetTransfer" },
+      "description": "Inter-center asset transfer shipments and gate pass records"
+    },
+    "/disposals/{disposalId}": {
+      "schema": { "$ref": "#/entities/DisposalRequest" },
+      "description": "Disposal and write-off requests with financial depreciation audit"
+    },
+    "/settings/orgProfile": {
+      "schema": { "$ref": "#/entities/OrganizationProfile" },
+      "description": "Official institutional branding and parameters"
+    }
+  }
+}

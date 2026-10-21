@@ -1,0 +1,6 @@
+{
+  "name": "LEEDO Asset Management System (LAMS)",
+  "description": "Enterprise Asset Management & Tracking System for LEEDO across 13 centers, shelters, and schools with RBAC, depreciation calculator, and transfer gate passes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
