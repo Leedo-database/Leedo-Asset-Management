@@ -1431,6 +1431,43 @@ class StorageService {
     this.listeners.forEach((l) => l());
   }
 
+  private cloudSyncHandler?: (action: string, data: any) => void;
+
+  public registerCloudSyncHandler(handler: (action: string, data: any) => void) {
+    this.cloudSyncHandler = handler;
+  }
+
+  // Cloud sync incoming receivers
+  public setAllAssetsFromCloud(assets: Asset[]): void {
+    localStorage.setItem(KEYS.ASSETS, JSON.stringify(assets));
+    this.notify();
+  }
+
+  public setAllTransfersFromCloud(transfers: AssetTransfer[]): void {
+    localStorage.setItem(KEYS.TRANSFERS, JSON.stringify(transfers));
+    this.notify();
+  }
+
+  public setAllDisposalsFromCloud(disposals: DisposalRequest[]): void {
+    localStorage.setItem(KEYS.DISPOSALS, JSON.stringify(disposals));
+    this.notify();
+  }
+
+  public setAllAreasFromCloud(areas: Area[]): void {
+    localStorage.setItem(KEYS.AREAS, JSON.stringify(areas));
+    this.notify();
+  }
+
+  public setAllUsersFromCloud(users: User[]): void {
+    localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+    this.notify();
+  }
+
+  public setOrgProfileFromCloud(profile: OrganizationProfile): void {
+    localStorage.setItem(KEYS.ORG_PROFILE, JSON.stringify(profile));
+    this.notify();
+  }
+
   // --- Auth & Users ---
   public getUsers(): User[] {
     const raw = localStorage.getItem(KEYS.USERS);
@@ -1453,12 +1490,14 @@ class StorageService {
       localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(user));
     }
     this.notify();
+    this.cloudSyncHandler?.('saveUser', user);
   }
 
   public deleteUser(userId: string): void {
     const users = this.getUsers().filter((u) => u.id !== userId);
     localStorage.setItem(KEYS.USERS, JSON.stringify(users));
     this.notify();
+    this.cloudSyncHandler?.('deleteUser', userId);
   }
 
   public getCurrentUser(): User | null {
@@ -1543,12 +1582,14 @@ class StorageService {
     }
     localStorage.setItem(KEYS.AREAS, JSON.stringify(areas));
     this.notify();
+    this.cloudSyncHandler?.('saveArea', area);
   }
 
   public deleteArea(areaId: string): void {
     const areas = this.getAreas().filter((a) => a.id !== areaId);
     localStorage.setItem(KEYS.AREAS, JSON.stringify(areas));
     this.notify();
+    this.cloudSyncHandler?.('deleteArea', areaId);
   }
 
   // --- Assets ---
@@ -1560,33 +1601,38 @@ class StorageService {
   public saveAsset(asset: Asset): void {
     const assets = this.getAssets();
     const index = assets.findIndex((a) => a.id === asset.id);
+    const updatedAsset = {
+      ...asset,
+      createdAt: asset.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
     if (index >= 0) {
-      assets[index] = { ...asset, updatedAt: new Date().toISOString() };
+      assets[index] = updatedAsset;
     } else {
-      assets.unshift({
-        ...asset,
-        createdAt: asset.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+      assets.unshift(updatedAsset);
     }
     localStorage.setItem(KEYS.ASSETS, JSON.stringify(assets));
     this.notify();
+    this.cloudSyncHandler?.('saveAsset', updatedAsset);
   }
 
   public deleteAsset(assetId: string): void {
     const assets = this.getAssets().filter((a) => a.id !== assetId);
     localStorage.setItem(KEYS.ASSETS, JSON.stringify(assets));
     this.notify();
+    this.cloudSyncHandler?.('deleteAsset', assetId);
   }
 
   public setAllAssets(newAssets: Asset[]): void {
     localStorage.setItem(KEYS.ASSETS, JSON.stringify(newAssets));
     this.notify();
+    this.cloudSyncHandler?.('bulkSaveAssets', { assets: newAssets, replace: true });
   }
 
   public clearAssets(): void {
     localStorage.setItem(KEYS.ASSETS, JSON.stringify([]));
     this.notify();
+    this.cloudSyncHandler?.('clearAllAssets', null);
   }
 
   public generateAssetId(areaCode: string, year = new Date().getFullYear()): string {
@@ -1629,6 +1675,7 @@ class StorageService {
     }
 
     this.notify();
+    this.cloudSyncHandler?.('saveTransfer', transfer);
   }
 
   public generateVoucherNumber(): string {
@@ -1667,6 +1714,7 @@ class StorageService {
     }
 
     this.notify();
+    this.cloudSyncHandler?.('saveDisposal', request);
   }
 
   // --- Org Profile ---
@@ -1678,6 +1726,7 @@ class StorageService {
   public saveOrgProfile(profile: OrganizationProfile): void {
     localStorage.setItem(KEYS.ORG_PROFILE, JSON.stringify(profile));
     this.notify();
+    this.cloudSyncHandler?.('saveOrgProfile', profile);
   }
 
   // --- Language ---
@@ -1704,3 +1753,4 @@ class StorageService {
 }
 
 export const storage = new StorageService();
+

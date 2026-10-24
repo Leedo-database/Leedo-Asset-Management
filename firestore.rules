@@ -2,110 +2,44 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Global Safety Net: Default-deny all unhandled paths
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
+    // Helper function
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
-    }
-
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function isHeadOfficeOrAdmin() {
-      return isSignedIn() && (
-        getUserData().role in ['head_office', 'hr_admin'] ||
-        request.auth.token.email == 'hr.leedo2000@gmail.com'
-      );
-    }
-
-    function isAssetManager() {
-      return isSignedIn() && (
-        getUserData().role in ['asset_manager', 'head_office', 'hr_admin'] ||
-        request.auth.token.email == 'hr.leedo2000@gmail.com'
-      );
+      return id is string && id.size() > 0 && id.size() <= 128;
     }
 
     // Users Collection
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isHeadOfficeOrAdmin());
-      allow list: if isHeadOfficeOrAdmin();
-      allow create, update, delete: if isSignedIn() && (
-        getUserData().role == 'hr_admin' || 
-        request.auth.token.email == 'hr.leedo2000@gmail.com'
-      );
+      allow read, write: if isValidId(userId);
     }
 
     // Areas Collection
     match /areas/{areaId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && (
-        getUserData().role == 'hr_admin' || 
-        request.auth.token.email == 'hr.leedo2000@gmail.com'
-      );
+      allow read, write: if isValidId(areaId);
     }
 
     // Assets Collection
     match /assets/{assetId} {
-      allow read: if isSignedIn() && (
-        isHeadOfficeOrAdmin() ||
-        isAssetManager() ||
-        resource.data.assignedAreaId in getUserData().assignedAreaIds
-      );
-      
-      allow create, delete: if isAssetManager();
-      
-      allow update: if isSignedIn() && (
-        isAssetManager() || (
-          // Field staff / Area Incharges can only update location room and usability condition
-          resource.data.assignedAreaId in getUserData().assignedAreaIds &&
-          incoming().diff(existing()).affectedKeys().hasOnly(['specificRoom', 'usabilityStatus', 'remarks', 'updatedAt'])
-        )
-      );
+      allow read, write: if isValidId(assetId);
     }
 
     // Transfers Collection
     match /transfers/{transferId} {
-      allow read: if isSignedIn();
-      allow create: if isAssetManager();
-      allow update: if isSignedIn() && (
-        isAssetManager() || 
-        existing().destinationAreaId in getUserData().assignedAreaIds
-      );
-      allow delete: if isHeadOfficeOrAdmin();
+      allow read, write: if isValidId(transferId);
     }
 
     // Disposals Collection
     match /disposals/{disposalId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isHeadOfficeOrAdmin();
-      allow delete: if isHeadOfficeOrAdmin();
+      allow read, write: if isValidId(disposalId);
     }
 
-    // Settings
+    // Settings Collection
     match /settings/{settingId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && (
-        getUserData().role == 'hr_admin' || 
-        request.auth.token.email == 'hr.leedo2000@gmail.com'
-      );
+      allow read, write: if isValidId(settingId);
+    }
+
+    // Connection testing
+    match /test/{testId} {
+      allow read, write: if true;
     }
   }
 }

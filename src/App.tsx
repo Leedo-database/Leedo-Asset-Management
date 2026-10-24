@@ -30,6 +30,7 @@ import { StaffManagementView } from './components/StaffManagementView';
 import { TransfersView } from './components/TransfersView';
 import { UserProfileModal } from './components/UserProfileModal';
 import { Language, translations } from './i18n/translations';
+import { firebaseSync } from './services/firebaseSync';
 import { storage } from './services/storage';
 import { Area, Asset, AssetTransfer, DisposalRequest, OrganizationProfile, UsabilityStatus, User } from './types';
 
@@ -55,8 +56,10 @@ export default function App() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  // Subscribe to storage changes
+  // Subscribe to storage changes and initialize cloud sync
   useEffect(() => {
+    firebaseSync.init();
+
     const unsubscribe = storage.subscribe(() => {
       setCurrentUser(storage.getCurrentUser());
       setAssets(storage.getAssets());
@@ -315,9 +318,7 @@ export default function App() {
                 setIsAddAssetOpen(true);
               }}
               onDeleteAsset={(asset) => {
-                if (window.confirm(`Delete ${asset.titleEn} (${asset.id}) permanently?`)) {
-                  storage.deleteAsset(asset.id);
-                }
+                storage.deleteAsset(asset.id);
               }}
             />
           )}
