@@ -34,7 +34,7 @@ export const BulkImportAssetsModal: React.FC<BulkImportAssetsModalProps> = ({
 
   const t = translations[lang];
   const [inputText, setInputText] = useState('');
-  const [replaceExisting, setReplaceExisting] = useState(true); // Default to replacing old/demo assets as requested
+  const [replaceExisting, setReplaceExisting] = useState(false);
   const [parsedPreview, setParsedPreview] = useState<Partial<Asset>[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -204,13 +204,13 @@ Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\t
             <div>
               <h3 className="text-base font-bold">
                 {lang === 'bn'
-                  ? 'বাল্ক অ্যাসেট আমদানি ও প্রতিস্থাপন (Bulk Import & Replace)'
-                  : 'Bulk Asset Import & Data Management'}
+                  ? 'বাল্ক সম্পদ আমদানি (Bulk Asset Import)'
+                  : 'Bulk Asset Import'}
               </h3>
               <p className="text-xs text-slate-300">
                 {lang === 'bn'
-                  ? 'পূর্ববর্তী বা ডেমো অ্যাসেট মুছে নতুন রিয়েল অ্যাসেট তালিকা যুক্ত করুন'
-                  : 'Replace demo assets with official institutional asset inventory'}
+                  ? 'এক্সেল বা টেক্সট থেকে প্রতিষ্ঠানের সম্পদ তালিকা ক্লাউড ডাটাবেজে সংরক্ষণ করুন'
+                  : 'Import official institutional asset inventory directly to Firebase Cloud'}
               </p>
             </div>
           </div>
@@ -224,30 +224,20 @@ Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\t
 
         {/* Modal Body */}
         <div className="p-6 space-y-4 overflow-y-auto text-xs flex-1">
-          {/* Radio Choice: Replace or Append */}
-          <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          {/* Radio Choice: Append or Replace */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <span className="font-bold text-red-950 block text-xs">
+              <span className="font-bold text-slate-900 block text-xs">
                 {lang === 'bn' ? 'আমদানি মোড (Import Action):' : 'Import Action Mode:'}
               </span>
-              <p className="text-[11px] text-red-800">
+              <p className="text-[11px] text-slate-600">
                 {lang === 'bn'
-                  ? 'আগের বা ডেমো অ্যাসেট বাদ দিয়ে নতুনগুলো সেট করতে "পূর্ববর্তী অ্যাসেট বাদ দিয়ে প্রতিস্থাপন" নির্বাচন করুন।'
-                  : 'Select "Replace previous assets" to wipe mock demo assets and insert the fresh list.'}
+                  ? 'নতুন সম্পদ যুক্ত করতে বা সম্পূর্ণ নতুন তালিকা দিয়ে প্রতিস্থাপন করতে নির্বাচন করুন।'
+                  : 'Choose whether to append new assets to the registry or replace existing items.'}
               </p>
             </div>
             <div className="flex items-center space-x-3 shrink-0">
               <label className="flex items-center space-x-1.5 cursor-pointer font-bold text-slate-900">
-                <input
-                  type="radio"
-                  name="importMode"
-                  checked={replaceExisting}
-                  onChange={() => setReplaceExisting(true)}
-                  className="text-red-600 focus:ring-red-500"
-                />
-                <span>{lang === 'bn' ? 'আগের অ্যাসেট বাদ দিয়ে প্রতিস্থাপন' : 'Replace All Previous'}</span>
-              </label>
-              <label className="flex items-center space-x-1.5 cursor-pointer font-medium text-slate-700">
                 <input
                   type="radio"
                   name="importMode"
@@ -256,6 +246,16 @@ Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\t
                   className="text-red-600 focus:ring-red-500"
                 />
                 <span>{lang === 'bn' ? 'বিদ্যমানের সাথে যোগ' : 'Append to Existing'}</span>
+              </label>
+              <label className="flex items-center space-x-1.5 cursor-pointer font-medium text-slate-700">
+                <input
+                  type="radio"
+                  name="importMode"
+                  checked={replaceExisting}
+                  onChange={() => setReplaceExisting(true)}
+                  className="text-red-600 focus:ring-red-500"
+                />
+                <span>{lang === 'bn' ? 'নতুন তালিকা দিয়ে প্রতিস্থাপন' : 'Replace All Existing'}</span>
               </label>
             </div>
           </div>
@@ -395,8 +395,8 @@ Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\t
             <span>
               {replaceExisting
                 ? lang === 'bn'
-                  ? 'আগের অ্যাসেট মুছে এগুলো সংরক্ষণ করুন'
-                  : 'Replace Old & Save These Assets'
+                  ? 'প্রতিস্থাপন করে সংরক্ষণ করুন'
+                  : 'Replace & Save Assets'
                 : lang === 'bn'
                 ? 'ডাটাবেজে যুক্ত করুন'
                 : 'Append & Save Assets'}

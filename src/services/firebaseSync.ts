@@ -119,16 +119,11 @@ class FirebaseSyncService {
 
   private async checkAndSeedDefaults() {
     try {
-      const assetsSnap = await getDocs(collection(db, 'assets'));
-      if (assetsSnap.empty) {
-        console.info('Firestore is empty. Seeding baseline LEEDO database to Firebase Cloud...');
-        // Seed default assets
+      // 1. Ensure baseline organizational areas and authorized users exist in Firestore
+      const areasSnap = await getDocs(collection(db, 'areas'));
+      if (areasSnap.empty) {
+        console.info('Seeding baseline LEEDO areas, users, and org profile to Firebase Cloud...');
         const batch = writeBatch(db);
-        
-        DEFAULT_ASSETS.forEach((asset) => {
-          const ref = doc(db, 'assets', asset.id);
-          batch.set(ref, asset);
-        });
 
         DEFAULT_AREAS.forEach((area) => {
           const ref = doc(db, 'areas', area.id);
@@ -140,24 +135,41 @@ class FirebaseSyncService {
           batch.set(ref, user);
         });
 
-        DEFAULT_TRANSFERS.forEach((transfer) => {
-          const ref = doc(db, 'transfers', transfer.id);
-          batch.set(ref, transfer);
-        });
-
-        DEFAULT_DISPOSALS.forEach((disposal) => {
-          const ref = doc(db, 'disposals', disposal.id);
-          batch.set(ref, disposal);
-        });
-
         const orgRef = doc(db, 'settings', 'orgProfile');
         batch.set(orgRef, DEFAULT_ORG_PROFILE);
 
         await batch.commit();
-        console.info('Successfully seeded initial data to Firebase Cloud.');
+      }
+
+      // 2. Ensure all old demo assets, transfers, and disposals are cleared from Cloud
+      const isDemoWiped = localStorage.getItem('leedo_lams_demo_wiped_v8');
+      if (!isDemoWiped) {
+        await this.wipeAllDemoDataFromCloud();
+        localStorage.setItem('leedo_lams_demo_wiped_v8', 'true');
       }
     } catch (err) {
       console.warn('Seeding check note:', err);
+    }
+  }
+
+  public async wipeAllDemoDataFromCloud(): Promise<void> {
+    try {
+      this.setStatus('syncing', 'Purging demo data from cloud...');
+      const collectionsToPurge = ['assets', 'transfers', 'disposals'];
+      for (const col of collectionsToPurge) {
+        const snap = await getDocs(collection(db, col));
+        if (!snap.empty) {
+          const batch = writeBatch(db);
+          snap.forEach((d) => batch.delete(d.ref));
+          await batch.commit();
+        }
+      }
+      storage.clearAssets();
+      storage.setAllTransfersFromCloud([]);
+      storage.setAllDisposalsFromCloud([]);
+      this.setStatus('connected', 'Firebase Cloud: Synced');
+    } catch (err) {
+      console.warn('Wipe demo data notice:', err);
     }
   }
 
@@ -166,15 +178,13 @@ class FirebaseSyncService {
     const unsubAssets = onSnapshot(
       collection(db, 'assets'),
       (snapshot) => {
-        if (!snapshot.empty) {
-          const remoteAssets: Asset[] = [];
-          snapshot.forEach((doc) => {
-            remoteAssets.push(doc.data() as Asset);
-          });
-          // Update local cache and notify listeners without triggering infinite loop
-          storage.setAllAssetsFromCloud(remoteAssets);
-          this.setStatus('connected', 'Firebase Cloud: Synced');
-        }
+        const remoteAssets: Asset[] = [];
+        snapshot.forEach((doc) => {
+          remoteAssets.push(doc.data() as Asset);
+        });
+        // Update local cache and notify listeners without triggering infinite loop
+        storage.setAllAssetsFromCloud(remoteAssets);
+        this.setStatus('connected', 'Firebase Cloud: Synced');
       },
       (error) => {
         console.warn('Assets listener error:', error);
@@ -187,13 +197,11 @@ class FirebaseSyncService {
     const unsubTransfers = onSnapshot(
       collection(db, 'transfers'),
       (snapshot) => {
-        if (!snapshot.empty) {
-          const remoteTransfers: AssetTransfer[] = [];
-          snapshot.forEach((doc) => {
-            remoteTransfers.push(doc.data() as AssetTransfer);
-          });
-          storage.setAllTransfersFromCloud(remoteTransfers);
-        }
+        const remoteTransfers: AssetTransfer[] = [];
+        snapshot.forEach((doc) => {
+          remoteTransfers.push(doc.data() as AssetTransfer);
+        });
+        storage.setAllTransfersFromCloud(remoteTransfers);
       },
       (error) => console.warn('Transfers listener note:', error)
     );
@@ -203,13 +211,11 @@ class FirebaseSyncService {
     const unsubDisposals = onSnapshot(
       collection(db, 'disposals'),
       (snapshot) => {
-        if (!snapshot.empty) {
-          const remoteDisposals: DisposalRequest[] = [];
-          snapshot.forEach((doc) => {
-            remoteDisposals.push(doc.data() as DisposalRequest);
-          });
-          storage.setAllDisposalsFromCloud(remoteDisposals);
-        }
+        const remoteDisposals: DisposalRequest[] = [];
+        snapshot.forEach((doc) => {
+          remoteDisposals.push(doc.data() as DisposalRequest);
+        });
+        storage.setAllDisposalsFromCloud(remoteDisposals);
       },
       (error) => console.warn('Disposals listener note:', error)
     );

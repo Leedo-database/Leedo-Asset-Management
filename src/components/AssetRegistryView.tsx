@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   AlertOctagon,
   ArrowUpDown,
+  Boxes,
   Building,
   CheckCircle2,
   Clock,
@@ -66,7 +67,6 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
   const [selectedArea, setSelectedArea] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
-  const [isConfirmClearDemoOpen, setIsConfirmClearDemoOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
 
   // Tenant / Area scoping
@@ -277,19 +277,10 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                 <button
                   onClick={() => setIsBulkImportOpen(true)}
                   className="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-slate-800 text-white hover:bg-slate-900 shadow-xs transition-colors cursor-pointer"
-                  title="Bulk Import / Replace Assets"
+                  title="Bulk Import Assets"
                 >
                   <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{lang === 'bn' ? 'বাল্ক আমদানি / প্রতিস্থাপন' : 'Bulk Import'}</span>
-                </button>
-
-                <button
-                  onClick={() => setIsConfirmClearDemoOpen(true)}
-                  className="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 transition-colors shadow-2xs cursor-pointer"
-                  title={lang === 'bn' ? 'ডেমো সম্পদ বাদ দিয়ে নতুন শুরু করুন' : 'Clear Demo Assets & Start Fresh'}
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                  <span>{lang === 'bn' ? 'ডেমো সম্পদ বাদ দিন' : 'Clear Demo Assets'}</span>
+                  <span>{lang === 'bn' ? 'বাল্ক আমদানি' : 'Bulk Import'}</span>
                 </button>
               </>
             )}
@@ -392,10 +383,40 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
         </div>
 
         {filteredAssets.length === 0 ? (
-          <div className="py-12 text-center text-slate-400 text-xs">
-            <Layers className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-            <p className="font-semibold text-slate-600">{lang === 'bn' ? 'কোনো সম্পদ পাওয়া যায়নি' : 'No assets found'}</p>
-            <p className="text-slate-400 mt-1">{lang === 'bn' ? 'ফিল্টার পরিবর্তন করে চেষ্টা করুন।' : 'Try adjusting your search filters.'}</p>
+          <div className="py-16 text-center text-slate-500 text-xs px-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 border border-slate-200 shadow-2xs">
+              <Boxes className="w-7 h-7 text-slate-400" />
+            </div>
+            <p className="font-bold text-sm text-slate-800">
+              {assets.length === 0
+                ? (lang === 'bn' ? 'ডাটাবেজ বর্তমানে সম্পূর্ণ খালি ও ফ্রেশ' : 'Asset Registry is Clean & Ready')
+                : (lang === 'bn' ? 'কোনো সম্পদ খুঁজে পাওয়া যায়নি' : 'No matching assets found')}
+            </p>
+            <p className="text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+              {assets.length === 0
+                ? (lang === 'bn'
+                    ? 'আপনার প্রতিষ্ঠানের নতুন বাস্তব সম্পদ যুক্ত করতে উপরের "+ নতুন সম্পদ যোগ" অথবা "বাল্ক আমদানি" ব্যবহার করুন।'
+                    : 'Start fresh by registering your official assets using "+ Add New Asset" or "Bulk Import".')
+                : (lang === 'bn' ? 'অনুগ্রহ করে ফিল্টার বা সার্চ কিওয়ার্ড পরিবর্তন করে চেষ্টা করুন।' : 'Try adjusting your search filters.')}
+            </p>
+            {assets.length === 0 && currentUser.canManageAssets && (
+              <div className="mt-5 flex items-center justify-center space-x-2.5">
+                <button
+                  onClick={onOpenAddModal}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs cursor-pointer flex items-center space-x-1.5"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>{t.addNewAsset}</span>
+                </button>
+                <button
+                  onClick={() => setIsBulkImportOpen(true)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition-colors shadow-xs cursor-pointer flex items-center space-x-1.5"
+                >
+                  <Upload className="w-4 h-4 text-emerald-400" />
+                  <span>{lang === 'bn' ? 'বাল্ক আমদানি' : 'Bulk Import'}</span>
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -561,70 +582,6 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
           </div>
         )}
       </div>
-
-      {/* Clear Demo Assets Confirmation Modal */}
-      {isConfirmClearDemoOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
-            <div className="bg-rose-700 text-white px-5 py-4 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <AlertOctagon className="w-5 h-5 text-white" />
-                <h3 className="text-base font-bold">
-                  {lang === 'bn' ? 'ডেমো সম্পদ মুছে খালি করবেন?' : 'Clear All Demo Assets?'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsConfirmClearDemoOpen(false)}
-                className="p-1 rounded-lg text-rose-200 hover:text-white hover:bg-rose-800 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-3 text-xs text-slate-700">
-              <p className="leading-relaxed">
-                {lang === 'bn'
-                  ? 'গুগল ফায়ারবেস ক্লাউড ডেটাবেজ ও লোকাল স্টোরেজ থেকে পূর্ববর্তী সমস্ত নমুনা বা ডেমো অ্যাসেট মুছে ফেলা হবে। এটি অপরিবর্তনযোগ্য।'
-                  : 'All previous sample or mock assets will be permanently removed from Google Firebase Cloud Firestore and local storage.'}
-              </p>
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 space-y-1">
-                <span className="font-bold block">
-                  {lang === 'bn' ? 'মুছে ফেলার পর:' : 'After clearing:'}
-                </span>
-                <p className="text-[11px]">
-                  {lang === 'bn'
-                    ? 'আপনি আপনার প্রতিষ্ঠানের বাস্তব সম্পদ তালিকা এক এক করে (+ নতুন সম্পদ যোগ) অথবা এক্সেল থেকে পেস্ট করে (বাল্ক আমদানি) যুক্ত করতে পারবেন।'
-                    : 'You can insert your official institutional assets individually or bulk-paste from Excel.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setIsConfirmClearDemoOpen(false)}
-                className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-200 rounded-xl font-medium transition-colors cursor-pointer"
-              >
-                {lang === 'bn' ? 'বাতিল' : 'Cancel'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  storage.clearAssets();
-                  setIsConfirmClearDemoOpen(false);
-                }}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl flex items-center space-x-1.5 transition-colors cursor-pointer shadow-md"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>
-                  {lang === 'bn' ? 'হ্যাঁ, ডেমো সম্পদ মুছে ফেলুন' : 'Yes, Clear All Demo Assets'}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Delete Single Asset Confirmation Modal */}
       {assetToDelete && (
