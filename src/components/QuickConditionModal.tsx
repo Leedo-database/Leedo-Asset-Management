@@ -20,14 +20,23 @@ export const QuickConditionModal: React.FC<QuickConditionModalProps> = ({
   currentUser,
   lang,
 }) => {
-  if (!isOpen || !asset) return null;
-
   const t = translations[lang];
-  const [specificRoom, setSpecificRoom] = useState(asset.specificRoom || '');
+  const [specificRoom, setSpecificRoom] = useState(asset?.specificRoom || '');
   const [usabilityStatus, setUsabilityStatus] = useState<UsabilityStatus>(
-    asset.usabilityStatus === 'Disposed' ? 'Usable' : asset.usabilityStatus
+    asset?.usabilityStatus === 'Disposed' ? 'Usable' : (asset?.usabilityStatus || 'Usable')
   );
-  const [remarks, setRemarks] = useState(asset.remarks || '');
+  const [remarks, setRemarks] = useState(asset?.remarks || '');
+
+  // Keep form fields synced whenever target asset changes
+  React.useEffect(() => {
+    if (asset) {
+      setSpecificRoom(asset.specificRoom || '');
+      setUsabilityStatus(asset.usabilityStatus === 'Disposed' ? 'Usable' : asset.usabilityStatus);
+      setRemarks(asset.remarks || '');
+    }
+  }, [asset]);
+
+  if (!isOpen || !asset) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

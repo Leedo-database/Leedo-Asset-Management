@@ -2,39 +2,34 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function
-    function isValidId(id) {
-      return id is string && id.size() > 0 && id.size() <= 128;
+    // Assets Collection
+    match /assets/{assetId} {
+      allow read, write: if true;
     }
 
     // Users Collection
     match /users/{userId} {
-      allow read, write: if isValidId(userId);
+      allow read, write: if true;
     }
 
     // Areas Collection
     match /areas/{areaId} {
-      allow read, write: if isValidId(areaId);
-    }
-
-    // Assets Collection
-    match /assets/{assetId} {
-      allow read, write: if isValidId(assetId);
+      allow read, write: if true;
     }
 
     // Transfers Collection
     match /transfers/{transferId} {
-      allow read, write: if isValidId(transferId);
+      allow read, write: if true;
     }
 
     // Disposals Collection
     match /disposals/{disposalId} {
-      allow read, write: if isValidId(disposalId);
+      allow read, write: if true;
     }
 
     // Settings Collection
     match /settings/{settingId} {
-      allow read, write: if isValidId(settingId);
+      allow read, write: if true;
     }
 
     // Connection testing

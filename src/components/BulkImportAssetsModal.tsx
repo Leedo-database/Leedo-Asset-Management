@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clipboard,
   FileSpreadsheet,
-  Plus,
-  RefreshCw,
-  Trash2,
+  Table,
   Upload,
   X,
+  Trash2,
 } from 'lucide-react';
 import { Language, translations } from '../i18n/translations';
-import { storage } from '../services/storage';
+import { deduplicateAssets, storage } from '../services/storage';
 import { Area, Asset, AssetCategory, UsabilityStatus, User } from '../types';
 
 interface BulkImportAssetsModalProps {
@@ -22,6 +24,263 @@ interface BulkImportAssetsModalProps {
   onImportComplete: () => void;
 }
 
+/**
+ * Robust TSV / CSV parser that handles quotes, multiline cells, and tab/comma delimiters.
+ * Ensures newline within quotes (like "Sl. \n No.") doesn't split lines improperly.
+ */
+function parseDelimitedText(text: string): string[][] {
+  if (!text || !text.trim()) return [];
+
+  // Normalize all line breaks
+  const cleaned = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // Detect delimiter: tab (\t) or comma (,)
+  let tabCount = 0;
+  let commaCount = 0;
+  for (let i = 0; i < Math.min(cleaned.length, 3000); i++) {
+    if (cleaned[i] === '\t') tabCount++;
+    else if (cleaned[i] === ',') commaCount++;
+  }
+  const delimiter = tabCount > 0 ? '\t' : (commaCount > 0 ? ',' : '\t');
+
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i];
+    const nextChar = cleaned[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        currentCell += '"';
+        i++; // skip escaped quote
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === delimiter && !inQuotes) {
+      currentRow.push(currentCell.replace(/[\r\n]+/g, ' ').trim());
+      currentCell = '';
+    } else if (char === '\n' && !inQuotes) {
+      currentRow.push(currentCell.replace(/[\r\n]+/g, ' ').trim());
+      if (currentRow.some((c) => c.length > 0)) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentCell = '';
+    } else {
+      currentCell += char;
+    }
+  }
+
+  // Push remaining cell and row
+  if (currentCell.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentCell.replace(/[\r\n]+/g, ' ').trim());
+    if (currentRow.some((c) => c.length > 0)) {
+      rows.push(currentRow);
+    }
+  }
+
+  return rows;
+}
+
+// Find area ID by Location ID or Location Name
+function findAreaId(areas: Area[], locationNameOrCode: string, locationIdOrCode?: string): string {
+  const rawLoc = (locationNameOrCode || '').toLowerCase().trim();
+  const rawId = (locationIdOrCode || '').toLowerCase().trim();
+
+  // 1. Direct match on Area ID / Code
+  const match = areas.find((a) => {
+    const aId = a.id.toLowerCase();
+    const aCode = a.code.toLowerCase();
+    const aEn = a.nameEn.toLowerCase();
+    const aBn = a.nameBn.toLowerCase();
+
+    return (
+      (rawId && (aId === rawId || aCode === rawId)) ||
+      (rawLoc && (aId === rawLoc || aCode === rawLoc || aEn.includes(rawLoc) || aBn.includes(rawLoc)))
+    );
+  });
+
+  if (match) return match.id;
+
+  // 2. Keyword check for known LEEDO centers
+  if (rawLoc.includes('head office') || rawLoc.includes('ho') || rawId.includes('leedo000') || rawId.includes('ho')) return 'area-ho';
+  if (rawLoc.includes('mirpur') || rawLoc.includes('mir')) return 'area-mir';
+  if (rawLoc.includes('peace home') || rawLoc.includes('konabari') || rawLoc.includes('pch')) return 'area-pch';
+  if (rawLoc.includes('inclusive') || rawLoc.includes('school') || rawLoc.includes('ins')) return 'area-ins';
+  if (rawLoc.includes('kamalapur shelter') || rawLoc.includes('kms')) return 'area-kms';
+  if (rawLoc.includes('kamalapur') || rawLoc.includes('kmp')) return 'area-kmp';
+  if (rawLoc.includes('airport') || rawLoc.includes('apt')) return 'area-apt';
+  if (rawLoc.includes('tejgaon') || rawLoc.includes('tej')) return 'area-tej';
+  if (rawLoc.includes('rayerbazar') || rawLoc.includes('ray')) return 'area-ray';
+  if (rawLoc.includes('shadarghat') || rawLoc.includes('sadarghat') || rawLoc.includes('sdg')) return 'area-sdg';
+  if (rawLoc.includes('shambazar') || rawLoc.includes('shyambazar') || rawLoc.includes('smb')) return 'area-smb';
+  if (rawLoc.includes('kadamtali voc') || rawLoc.includes('kvc')) return 'area-kvc';
+  if (rawLoc.includes('kadamtali') || rawLoc.includes('kdt')) return 'area-kdt';
+
+  return 'area-ho';
+}
+
+// Normalize Category from ASSET GROUP and Item Name
+function normalizeCategory(groupStr: string, itemStr = ''): AssetCategory {
+  const combined = `${groupStr} ${itemStr}`.toLowerCase();
+
+  if (
+    combined.includes('pc') ||
+    combined.includes('computer') ||
+    combined.includes('laptop') ||
+    combined.includes('printer') ||
+    combined.includes('scanner') ||
+    combined.includes('it') ||
+    combined.includes('electronics') ||
+    combined.includes('ups') ||
+    combined.includes('server') ||
+    combined.includes('network') ||
+    combined.includes('camera') ||
+    combined.includes('office equipment')
+  ) {
+    return 'IT_Electronics';
+  }
+
+  if (
+    combined.includes('table') ||
+    combined.includes('chair') ||
+    combined.includes('desk') ||
+    combined.includes('shelf') ||
+    combined.includes('almirah') ||
+    combined.includes('cabinet') ||
+    combined.includes('bed') ||
+    combined.includes('sofa') ||
+    combined.includes('furniture')
+  ) {
+    return 'Furniture';
+  }
+
+  if (
+    combined.includes('vehicle') ||
+    combined.includes('car') ||
+    combined.includes('micro') ||
+    combined.includes('microbus') ||
+    combined.includes('ambulance') ||
+    combined.includes('bike') ||
+    combined.includes('motorcycle')
+  ) {
+    return 'Vehicle';
+  }
+
+  if (
+    combined.includes('ac') ||
+    combined.includes('air condition') ||
+    combined.includes('fridge') ||
+    combined.includes('refrigerator') ||
+    combined.includes('purifier') ||
+    combined.includes('fan') ||
+    combined.includes('appliance')
+  ) {
+    return 'Appliances';
+  }
+
+  if (
+    combined.includes('cooker') ||
+    combined.includes('gas') ||
+    combined.includes('kitchen') ||
+    combined.includes('pot') ||
+    combined.includes('stove')
+  ) {
+    return 'Kitchenware';
+  }
+
+  if (
+    combined.includes('smart board') ||
+    combined.includes('projector') ||
+    combined.includes('book') ||
+    combined.includes('school') ||
+    combined.includes('educational') ||
+    combined.includes('teaching')
+  ) {
+    return 'Educational';
+  }
+
+  if (
+    combined.includes('medical') ||
+    combined.includes('first aid') ||
+    combined.includes('stethoscope') ||
+    combined.includes('bp machine')
+  ) {
+    return 'Medical';
+  }
+
+  return 'Facility';
+}
+
+// Normalize Usability condition from Excel columns (e.g. 'Runing', 'Active', 'Good', 'Repairable')
+function normalizeStatus(conditionStr: string, statusStr = ''): UsabilityStatus {
+  const s = `${conditionStr} ${statusStr}`.toLowerCase();
+  if (s.includes('repair') || s.includes('damage') || s.includes('মেরামত')) return 'Repairable';
+  if (s.includes('unusable') || s.includes('broken') || s.includes('dead') || s.includes('অকেজো')) return 'Unusable';
+  if (s.includes('disp') || s.includes('scrap') || s.includes('বাতিল')) return 'Disposed';
+  return 'Usable';
+}
+
+// Normalize Acquisition Date (e.g. 'Nov-2025', '2025-11-01', '15/11/2025', 'Nov 2025')
+function normalizeDate(rawDate: string): string {
+  if (!rawDate || !rawDate.trim()) return new Date().toISOString().slice(0, 10);
+  const s = rawDate.trim();
+
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // Excel serial number format (e.g., 45620)
+  if (/^\d{5}$/.test(s)) {
+    const serial = parseInt(s, 10);
+    const excelEpoch = new Date(1899, 11, 30);
+    const dateFromSerial = new Date(excelEpoch.getTime() + serial * 86400000);
+    if (!isNaN(dateFromSerial.getTime())) {
+      return dateFromSerial.toISOString().slice(0, 10);
+    }
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (dmyMatch) {
+    const [, d, m, y] = dmyMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // Month-Year like Nov-2025 or Nov 2025 or November-2025
+  const monthNames: { [key: string]: string } = {
+    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+    jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+  };
+
+  const myMatch = s.match(/^([a-zA-Z]+)[\s\-\,\/]+(\d{4})$/);
+  if (myMatch) {
+    const monthKey = myMatch[1].toLowerCase().slice(0, 3);
+    const year = myMatch[2];
+    const monthNum = monthNames[monthKey] || '01';
+    return `${year}-${monthNum}-01`;
+  }
+
+  // Year-Month like 2025-Nov
+  const ymMatch = s.match(/^(\d{4})[\s\-\,\/]+([a-zA-Z]+)$/);
+  if (ymMatch) {
+    const year = ymMatch[1];
+    const monthKey = ymMatch[2].toLowerCase().slice(0, 3);
+    const monthNum = monthNames[monthKey] || '01';
+    return `${year}-${monthNum}-01`;
+  }
+
+  // Standard JavaScript Date parsing fallback
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  return new Date().toISOString().slice(0, 10);
+}
+
 export const BulkImportAssetsModal: React.FC<BulkImportAssetsModalProps> = ({
   isOpen,
   onClose,
@@ -30,152 +289,310 @@ export const BulkImportAssetsModal: React.FC<BulkImportAssetsModalProps> = ({
   lang,
   onImportComplete,
 }) => {
-  if (!isOpen) return null;
-
   const t = translations[lang];
   const [inputText, setInputText] = useState('');
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [parsedPreview, setParsedPreview] = useState<Partial<Asset>[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showColumnGuide, setShowColumnGuide] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sample placeholder template
-  const sampleTemplate = `Dell OptiPlex Desktop Computer\tIT_Electronics\tHead Office\t2024-03-10\t65000\tUsable\tAdmin Room 102\tDonation\tUNICEF
-Sewing Machine (Singer 191D)\tFacility\tKodomtoli\t2024-02-15\t28000\tUsable\tTraining Room\tPurchased\tSinger BD
-Heavy Duty Refrigerator 350L\tAppliances\tMirpur\t2023-11-20\t58000\tRepairable\tKitchen\tPurchased\tWalton
-Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\tTeachers Room\tPurchased\tOtobi`;
+  // Auto-parse immediately when inputText changes (e.g. user pastes or types)
+  useEffect(() => {
+    if (inputText.trim()) {
+      parseRowsFromText(inputText);
+    } else {
+      setParsedPreview([]);
+      setErrorMsg('');
+    }
+  }, [inputText]);
 
-  const findAreaId = (locationNameOrCode: string): string => {
-    const clean = (locationNameOrCode || '').toLowerCase().trim();
-    if (!clean) return 'area-ho';
-
-    const match = areas.find(
-      (a) =>
-        a.id.toLowerCase() === clean ||
-        a.code.toLowerCase() === clean ||
-        a.nameEn.toLowerCase().includes(clean) ||
-        a.nameBn.toLowerCase().includes(clean)
-    );
-
-    return match ? match.id : 'area-ho';
-  };
-
-  const normalizeCategory = (catStr: string): AssetCategory => {
-    const c = (catStr || '').toLowerCase().trim();
-    if (c.includes('it') || c.includes('comput') || c.includes('elect') || c.includes('laptop') || c.includes('printer')) return 'IT_Electronics';
-    if (c.includes('furn') || c.includes('table') || c.includes('chair') || c.includes('desk') || c.includes('bed')) return 'Furniture';
-    if (c.includes('vehic') || c.includes('car') || c.includes('micro') || c.includes('bike') || c.includes('ambulance')) return 'Vehicle';
-    if (c.includes('appliance') || c.includes('ac') || c.includes('fridge') || c.includes('purifier') || c.includes('fan')) return 'Appliances';
-    if (c.includes('kitch') || c.includes('cooker') || c.includes('pot')) return 'Kitchenware';
-    if (c.includes('edu') || c.includes('book') || c.includes('board') || c.includes('projector') || c.includes('school')) return 'Educational';
-    if (c.includes('medic') || c.includes('first aid')) return 'Medical';
-    return 'Facility';
-  };
-
-  const normalizeStatus = (statusStr: string): UsabilityStatus => {
-    const s = (statusStr || '').toLowerCase().trim();
-    if (s.includes('repair') || s.includes('মেরামত')) return 'Repairable';
-    if (s.includes('unusable') || s.includes('অকেজো')) return 'Unusable';
-    if (s.includes('disp') || s.includes('বাতিল')) return 'Disposed';
-    return 'Usable';
-  };
-
-  const handleParse = () => {
+  // Parse text into asset objects
+  function parseRowsFromText(text: string) {
     setErrorMsg('');
-    if (!inputText.trim()) {
-      setErrorMsg(lang === 'bn' ? 'অনুগ্রহ করে অ্যাসেটের তথ্য পেস্ট বা লিখুন।' : 'Please paste or enter asset rows.');
+    if (!text || !text.trim()) {
+      setParsedPreview([]);
       return;
     }
 
-    const lines = inputText.trim().split('\n').filter((l) => l.trim().length > 0);
+    const rows = parseDelimitedText(text);
+    if (rows.length === 0) {
+      setParsedPreview([]);
+      setErrorMsg(lang === 'bn' ? 'কোনো ডাটা পাওয়া যায়নি।' : 'No data rows found.');
+      return;
+    }
+
+    // Determine if first row is a header row
+    const firstRowText = rows[0].join(' ').toLowerCase();
+    const hasHeader =
+      firstRowText.includes('item name') ||
+      firstRowText.includes('asset id') ||
+      firstRowText.includes('location id') ||
+      firstRowText.includes('location name') ||
+      firstRowText.includes('asset group') ||
+      firstRowText.includes('acquisition date') ||
+      firstRowText.includes('cost in bdt') ||
+      firstRowText.includes('sl.') ||
+      firstRowText.includes('present location') ||
+      firstRowText.includes('current holder');
+
+    const colMap: { [key: string]: number } = {};
+
+    if (hasHeader) {
+      rows[0].forEach((col, idx) => {
+        const c = col.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (c.includes('asset id')) colMap['assetId'] = idx;
+        else if (c.includes('item name') || c === 'item') colMap['itemName'] = idx;
+        else if (c.includes('item desc') || c.includes('description')) colMap['itemDesc'] = idx;
+        else if (c.includes('location name') || (c.includes('location') && !c.includes('id') && !c.includes('present'))) colMap['locationName'] = idx;
+        else if (c.includes('location id')) colMap['locationId'] = idx;
+        else if (c.includes('group') || c.includes('category')) colMap['group'] = idx;
+        else if (c.includes('acquisition date') || c.includes('purchase date') || (c.includes('date') && !c.includes('dispose'))) colMap['date'] = idx;
+        else if (c.includes('cost') || c.includes('price') || c.includes('value') || c.includes('bdt')) colMap['cost'] = idx;
+        else if (c.includes('condition')) colMap['condition'] = idx;
+        else if (c.includes('status')) colMap['status'] = idx;
+        else if (c.includes('room') || c.includes('present location')) colMap['room'] = idx;
+        else if (c.includes('procured') || c.includes('vendor') || c.includes('transferred')) colMap['vendor'] = idx;
+        else if (c.includes('holder')) colMap['holder'] = idx;
+        else if (c.includes('comment') || c.includes('remarks')) colMap['comments'] = idx;
+      });
+    }
+
+    const dataRows = hasHeader ? rows.slice(1) : rows;
     const results: Partial<Asset>[] = [];
 
-    lines.forEach((line, index) => {
-      // Split by tab (Excel copy-paste) or comma
-      let cols = line.includes('\t') ? line.split('\t') : line.split(',');
-      cols = cols.map((c) => c.replace(/^["']|["']$/g, '').trim());
+    dataRows.forEach((row) => {
+      if (!row || row.length === 0) return;
+      if (row.every((cell) => !cell || !cell.trim())) return;
 
-      if (cols.length >= 1) {
-        const title = cols[0];
-        if (!title || title.toLowerCase() === 'title' || title.toLowerCase() === 'asset title' || title.toLowerCase() === 'নাম') {
-          return; // Skip header row
+      let assetId = '';
+      let itemName = '';
+      let itemDesc = '';
+      let locationName = '';
+      let locationId = '';
+      let assetGroup = '';
+      let acqDate = '';
+      let costValue = 0;
+      let conditionText = '';
+      let statusText = '';
+      let roomName = '';
+      let vendorText = '';
+      let commentsText = '';
+      let holderText = '';
+
+      if (colMap['itemName'] !== undefined || colMap['assetId'] !== undefined) {
+        assetId = colMap['assetId'] !== undefined ? row[colMap['assetId']] || '' : '';
+        itemName = colMap['itemName'] !== undefined ? row[colMap['itemName']] || '' : '';
+        itemDesc = colMap['itemDesc'] !== undefined ? row[colMap['itemDesc']] || '' : '';
+        locationName = colMap['locationName'] !== undefined ? row[colMap['locationName']] || '' : '';
+        locationId = colMap['locationId'] !== undefined ? row[colMap['locationId']] || '' : '';
+        assetGroup = colMap['group'] !== undefined ? row[colMap['group']] || '' : '';
+        acqDate = colMap['date'] !== undefined ? row[colMap['date']] || '' : '';
+        const rawCost = colMap['cost'] !== undefined ? row[colMap['cost']] || '0' : '0';
+        costValue = parseFloat(rawCost.replace(/[^0-9.]/g, '')) || 0;
+        conditionText = colMap['condition'] !== undefined ? row[colMap['condition']] || '' : '';
+        statusText = colMap['status'] !== undefined ? row[colMap['status']] || '' : '';
+        roomName = colMap['room'] !== undefined ? row[colMap['room']] || '' : '';
+        vendorText = colMap['vendor'] !== undefined ? row[colMap['vendor']] || '' : '';
+        commentsText = colMap['comments'] !== undefined ? row[colMap['comments']] || '' : '';
+        holderText = colMap['holder'] !== undefined ? row[colMap['holder']] || '' : '';
+      } else if (row.length >= 8) {
+        const startsWithSlNo = /^\d+$/.test(row[0].trim());
+        const offset = startsWithSlNo ? 0 : -1;
+
+        if (offset === 0) {
+          locationId = row[1] || '';
+          locationName = row[2] || '';
+          itemName = row[3] || '';
+          itemDesc = row[4] || '';
+          assetId = row[5] || '';
+          assetGroup = row[7] || '';
+          acqDate = row[8] || '';
+          costValue = parseFloat((row[9] || '0').replace(/[^0-9.]/g, '')) || 0;
+          vendorText = row[10] || '';
+          holderText = row[11] || '';
+          statusText = row[12] || '';
+          conditionText = row[14] || '';
+          roomName = row[15] || '';
+          commentsText = row[16] || '';
+        } else {
+          if (/^LEEDO\d+/i.test(row[0])) {
+            locationId = row[0] || '';
+            locationName = row[1] || '';
+            itemName = row[2] || '';
+            itemDesc = row[3] || '';
+            assetId = row[4] || '';
+            assetGroup = row[6] || '';
+            acqDate = row[7] || '';
+            costValue = parseFloat((row[8] || '0').replace(/[^0-9.]/g, '')) || 0;
+            holderText = row[10] || '';
+            statusText = row[11] || '';
+            conditionText = row[13] || '';
+            roomName = row[14] || '';
+          } else {
+            itemName = row[0] || '';
+            itemDesc = row[1] || '';
+            assetId = row[2] || '';
+            assetGroup = row[3] || '';
+            locationName = row[4] || '';
+            costValue = parseFloat((row[5] || '0').replace(/[^0-9.]/g, '')) || 0;
+          }
         }
-
-        const category = cols[1] ? normalizeCategory(cols[1]) : 'IT_Electronics';
-        const locationInput = cols[2] || 'Head Office';
-        const areaId = findAreaId(locationInput);
-        const purchaseDate = cols[3] && cols[3].match(/^\d{4}-\d{2}-\d{2}$/) ? cols[3] : new Date().toISOString().slice(0, 10);
-        const cost = parseFloat((cols[4] || '0').replace(/[^0-9.]/g, '')) || 10000;
-        const condition = cols[5] ? normalizeStatus(cols[5]) : 'Usable';
-        const room = cols[6] || '';
-        const acqType = cols[7]?.toLowerCase().includes('don') ? 'Donation' : 'Purchased';
-        const vendor = cols[8] || (acqType === 'Donation' ? 'Donor / Grant' : 'Authorized Vendor');
-
-        results.push({
-          titleEn: title,
-          category,
-          assignedAreaId: areaId,
-          purchaseDate,
-          purchaseValueBDT: cost,
-          usabilityStatus: condition,
-          initialCondition: 'New',
-          acquisitionType: acqType,
-          donorOrVendor: vendor,
-          specificRoom: room,
-          createdBy: currentUser.name,
-        });
+      } else {
+        itemName = row[0] || '';
+        assetGroup = row[1] || '';
+        locationName = row[2] || '';
+        acqDate = row[3] || '';
+        costValue = parseFloat((row[4] || '0').replace(/[^0-9.]/g, '')) || 0;
+        conditionText = row[5] || '';
+        roomName = row[6] || '';
       }
+
+      if (!assetId) {
+        const foundId = row.find((cell) => cell.includes('/') && /[a-zA-Z]/.test(cell) && /\d/.test(cell));
+        if (foundId) assetId = foundId.trim();
+      }
+
+      if (!itemName) {
+        const possibleName = row.find(
+          (c) => c && c.length >= 2 && !/^\d+$/.test(c) && !c.includes('/') && !/^LEEDO\d+/i.test(c)
+        );
+        if (possibleName) itemName = possibleName;
+      }
+
+      if (!itemName && !assetId) return;
+
+      const finalItemName = itemName || (assetId ? `Asset ${assetId}` : 'Equipment Item');
+      const fullTitleEn =
+        itemDesc && itemDesc.toLowerCase() !== 'new' && itemDesc.toLowerCase() !== 'used'
+          ? `${finalItemName} - ${itemDesc}`
+          : finalItemName;
+
+      const areaId = findAreaId(areas, locationName, locationId);
+      const parsedDate = normalizeDate(acqDate);
+      const category = normalizeCategory(assetGroup, finalItemName);
+      const usabilityStatus = normalizeStatus(conditionText, statusText);
+      const initialCond = (itemDesc || '').toLowerCase().includes('used') ? 'Used' : 'New';
+
+      const remarksParts = [];
+      if (assetGroup) remarksParts.push(`Group: ${assetGroup}`);
+      if (locationId) remarksParts.push(`Location ID: ${locationId}`);
+      if (holderText) remarksParts.push(`Holder: ${holderText}`);
+      if (conditionText) remarksParts.push(`Condition: ${conditionText}`);
+      if (commentsText) remarksParts.push(commentsText);
+
+      results.push({
+        id: assetId.trim() || undefined,
+        titleEn: fullTitleEn,
+        category,
+        assignedAreaId: areaId,
+        purchaseDate: parsedDate,
+        purchaseValueBDT: costValue || 36000,
+        initialCondition: initialCond,
+        usabilityStatus,
+        specificRoom: roomName || 'General Store',
+        donorOrVendor: vendorText || holderText || 'LEEDO Head Office',
+        remarks: remarksParts.join(' | ') || 'Registered through Excel Bulk Import',
+        createdBy: currentUser.name,
+      });
     });
 
     if (results.length === 0) {
-      setErrorMsg(lang === 'bn' ? 'কোনো বৈধ সম্পদ সারি শনাক্ত করা যায়নি।' : 'No valid asset rows parsed.');
+      setParsedPreview([]);
+      setErrorMsg(
+        lang === 'bn'
+          ? 'কোনো বৈধ সম্পদ সারি শনাক্ত করা যায়নি। এক্সেল থেকে সারিগুলো কপি করে আবার পেস্ট করুন।'
+          : 'Could not detect any valid asset rows. Please copy rows from Excel and paste again.'
+      );
     } else {
-      setParsedPreview(results);
+      const cleanResults = deduplicateAssets(results as Asset[]);
+      setParsedPreview(cleanResults);
+      setErrorMsg('');
     }
+  }
+
+  // Handle direct paste from clipboard API button
+  const handleClipboardPaste = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          setInputText(text);
+          return;
+        }
+      }
+    } catch {
+      // Clipboard access denied, fallback to focusing the textarea
+    }
+    textareaRef.current?.focus();
   };
 
+  // Save parsed items to storage and Firebase Cloud
   const handleSaveToDatabase = () => {
     if (parsedPreview.length === 0) {
-      setErrorMsg(lang === 'bn' ? 'সংরক্ষণ করার আগে পার্স করুন।' : 'Please parse items before saving.');
+      setErrorMsg(lang === 'bn' ? 'সংরক্ষণ করার আগে এক্সেল ডেটা দিন।' : 'Please provide Excel data before saving.');
       return;
     }
 
-    const currentYear = new Date().getFullYear();
-    const finalAssets: Asset[] = parsedPreview.map((item, idx) => {
-      const area = areas.find((a) => a.id === item.assignedAreaId) || areas[0];
-      const areaCode = area ? area.code : 'HO';
-      const assetId = `LEEDO-${areaCode}-${currentYear}-${String(idx + 1).padStart(4, '0')}`;
+    setIsSaving(true);
+    setErrorMsg('');
 
-      return {
-        id: assetId,
-        titleEn: item.titleEn || 'Asset Item',
-        titleBn: item.titleBn,
-        category: item.category || 'Facility',
-        acquisitionType: item.acquisitionType || 'Purchased',
-        donorOrVendor: item.donorOrVendor || 'Vendor',
-        purchaseDate: item.purchaseDate || new Date().toISOString().slice(0, 10),
-        purchaseValueBDT: item.purchaseValueBDT || 10000,
-        initialCondition: 'New',
-        usabilityStatus: item.usabilityStatus || 'Usable',
-        assignedAreaId: item.assignedAreaId || 'area-ho',
-        specificRoom: item.specificRoom || 'General Store',
-        remarks: item.remarks || 'Registered through bulk import',
-        createdBy: currentUser.name,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    try {
+      const currentYear = new Date().getFullYear();
+      const finalAssets: Asset[] = parsedPreview.map((item, idx) => {
+        const area = areas.find((a) => a.id === item.assignedAreaId) || areas[0];
+        const areaCode = area ? area.code : 'HO';
 
-    if (replaceExisting) {
-      // Replaces previous/demo assets
-      storage.setAllAssets(finalAssets);
-    } else {
-      // Append
-      const existing = storage.getAssets();
-      storage.setAllAssets([...finalAssets, ...existing]);
+        const exactAssetId =
+          item.id && item.id.trim().length > 0
+            ? item.id.trim()
+            : `LEEDO-${areaCode}-${currentYear}-${String(idx + 1).padStart(4, '0')}`;
+
+        return {
+          id: exactAssetId,
+          titleEn: item.titleEn || 'Asset Item',
+          titleBn: item.titleBn || '',
+          category: item.category || 'IT_Electronics',
+          acquisitionType: item.acquisitionType || 'Purchased',
+          donorOrVendor: item.donorOrVendor || 'LEEDO Head Office',
+          purchaseDate: item.purchaseDate || new Date().toISOString().slice(0, 10),
+          purchaseValueBDT: item.purchaseValueBDT || 36000,
+          initialCondition: item.initialCondition || 'New',
+          usabilityStatus: item.usabilityStatus || 'Usable',
+          assignedAreaId: item.assignedAreaId || 'area-ho',
+          specificRoom: item.specificRoom || 'General Store',
+          remarks: item.remarks || 'Registered through Excel bulk import',
+          createdBy: currentUser.name,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      const uniqueFinal = deduplicateAssets(finalAssets);
+
+      if (replaceExisting) {
+        storage.setAllAssets(uniqueFinal, true);
+      } else {
+        const existing = storage.getAssets();
+        const newIds = new Set(uniqueFinal.map((a) => a.id));
+        const filteredExisting = existing.filter((a) => !newIds.has(a.id));
+        storage.setAllAssets(deduplicateAssets([...uniqueFinal, ...filteredExisting]), false);
+      }
+
+      setSaveSuccess(true);
+      onImportComplete();
+
+      setTimeout(() => {
+        setIsSaving(false);
+        setSaveSuccess(false);
+        onClose();
+      }, 700);
+    } catch (err: any) {
+      setIsSaving(false);
+      setErrorMsg(lang === 'bn' ? 'সংরক্ষণ করতে সমস্যা হয়েছে: ' + (err?.message || '') : 'Failed to save: ' + (err?.message || ''));
     }
-
-    onImportComplete();
-    onClose();
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,25 +609,33 @@ Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\t
     reader.readAsText(file);
   };
 
+  // Do not render anything when modal is not open
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 my-8 flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl max-w-5xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 my-6 flex flex-col max-h-[92vh]">
         {/* Top Header */}
         <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center space-x-2.5">
-            <div className="p-2 bg-emerald-600 rounded-lg">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 bg-red-600 rounded-xl shadow-md">
               <FileSpreadsheet className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-base font-bold">
-                {lang === 'bn'
-                  ? 'বাল্ক সম্পদ আমদানি (Bulk Asset Import)'
-                  : 'Bulk Asset Import'}
+              <h3 className="text-base font-bold flex items-center space-x-2">
+                <span>
+                  {lang === 'bn'
+                    ? 'এক্সেল থেকে বাল্ক সম্পদ আপলোড ও নিবন্ধন'
+                    : 'Bulk Asset Upload & Registration from Excel'}
+                </span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold px-2 py-0.5 rounded-full">
+                  18-Column Excel Ready
+                </span>
               </h3>
               <p className="text-xs text-slate-300">
                 {lang === 'bn'
-                  ? 'এক্সেল বা টেক্সট থেকে প্রতিষ্ঠানের সম্পদ তালিকা ক্লাউড ডাটাবেজে সংরক্ষণ করুন'
-                  : 'Import official institutional asset inventory directly to Firebase Cloud'}
+                  ? 'এক্সেল থেকে সরাসরি কপি (Ctrl+C) করে এখানে পেস্ট (Ctrl+V) করুন — সিস্টেম তাৎক্ষণিকভাবে শনাক্ত করবে'
+                  : 'Copy (Ctrl+C) directly from Excel and paste (Ctrl+V) below — auto-detects instantly'}
               </p>
             </div>
           </div>
@@ -224,20 +649,20 @@ Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\t
 
         {/* Modal Body */}
         <div className="p-6 space-y-4 overflow-y-auto text-xs flex-1">
-          {/* Radio Choice: Append or Replace */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          {/* Action Mode Radio (Append vs Replace) */}
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <span className="font-bold text-slate-900 block text-xs">
                 {lang === 'bn' ? 'আমদানি মোড (Import Action):' : 'Import Action Mode:'}
               </span>
               <p className="text-[11px] text-slate-600">
                 {lang === 'bn'
-                  ? 'নতুন সম্পদ যুক্ত করতে বা সম্পূর্ণ নতুন তালিকা দিয়ে প্রতিস্থাপন করতে নির্বাচন করুন।'
-                  : 'Choose whether to append new assets to the registry or replace existing items.'}
+                  ? 'বিদ্যমান তালিকার সাথে যোগ করতে চান নাকি সম্পূর্ণ নতুন তালিকা দিয়ে প্রতিস্থাপন করতে চান নির্বাচন করুন।'
+                  : 'Choose whether to append these rows to existing assets or replace all existing records.'}
               </p>
             </div>
             <div className="flex items-center space-x-3 shrink-0">
-              <label className="flex items-center space-x-1.5 cursor-pointer font-bold text-slate-900">
+              <label className="flex items-center space-x-1.5 cursor-pointer font-bold text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
                 <input
                   type="radio"
                   name="importMode"
@@ -245,9 +670,9 @@ Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\t
                   onChange={() => setReplaceExisting(false)}
                   className="text-red-600 focus:ring-red-500"
                 />
-                <span>{lang === 'bn' ? 'বিদ্যমানের সাথে যোগ' : 'Append to Existing'}</span>
+                <span>{lang === 'bn' ? 'বিদ্যমানের সাথে যোগ (Append)' : 'Append to Existing'}</span>
               </label>
-              <label className="flex items-center space-x-1.5 cursor-pointer font-medium text-slate-700">
+              <label className="flex items-center space-x-1.5 cursor-pointer font-medium text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
                 <input
                   type="radio"
                   name="importMode"
@@ -255,47 +680,146 @@ Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\t
                   onChange={() => setReplaceExisting(true)}
                   className="text-red-600 focus:ring-red-500"
                 />
-                <span>{lang === 'bn' ? 'নতুন তালিকা দিয়ে প্রতিস্থাপন' : 'Replace All Existing'}</span>
+                <span>{lang === 'bn' ? 'নতুন দিয়ে প্রতিস্থাপন (Replace All)' : 'Replace All Existing'}</span>
               </label>
             </div>
           </div>
 
-          {/* Input Area */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="font-bold text-slate-700 uppercase tracking-wider">
-                {lang === 'bn'
-                  ? 'এক্সেল বা টেক্সট থেকে পেস্ট করুন (Paste Rows from Excel / Text):'
-                  : 'Paste Rows from Excel or Text:'}
-              </label>
+          {/* Column Guide Accordion */}
+          <div className="border border-blue-200 bg-blue-50/60 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowColumnGuide(!showColumnGuide)}
+              className="w-full px-4 py-2.5 flex items-center justify-between text-left text-blue-900 font-bold hover:bg-blue-100/60 transition-colors cursor-pointer"
+            >
               <div className="flex items-center space-x-2">
+                <Table className="w-4 h-4 text-blue-600" />
+                <span>
+                  {lang === 'bn'
+                    ? 'আপনার এক্সেল ফাইলের কলামের ক্রম নির্দেশিকা (LEEDO Official 18 Columns)'
+                    : 'Excel Column Order Guide (LEEDO Official 18 Columns)'}
+                </span>
+                <span className="text-[10px] bg-blue-200 text-blue-800 font-bold px-1.5 py-0.2 rounded">
+                  {showColumnGuide ? (lang === 'bn' ? 'লুকান' : 'দেখুন') : (lang === 'bn' ? 'দেখুন' : 'Show')}
+                </span>
+              </div>
+              {showColumnGuide ? <ChevronUp className="w-4 h-4 text-blue-700" /> : <ChevronDown className="w-4 h-4 text-blue-700" />}
+            </button>
+
+            {showColumnGuide && (
+              <div className="p-3.5 border-t border-blue-200 bg-white space-y-2 text-[11px] text-slate-700">
+                <p className="font-semibold text-slate-900">
+                  {lang === 'bn'
+                    ? 'এক্সেল থেকে কলামগুলো সরাসরি সিলেক্ট করে কপি (Ctrl+C) করে নিচের বক্সে পেস্ট (Ctrl+V) করুন:'
+                    : 'Select and copy (Ctrl+C) columns from your Excel sheet and paste (Ctrl+V) into the box below:'}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5 font-mono text-[10px]">
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">1. Sl. No.</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">2. Location ID</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">3. Location Name</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded font-bold text-red-700">4. Item Name</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">5. Item Description</span>
+                  <span className="p-1.5 bg-emerald-50 border border-emerald-300 rounded font-bold text-emerald-800">6. Asset ID Number ⭐</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">7. Qty.</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">8. ASSET GROUP</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">9. Acquisition Date</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">10. Cost in BDT</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">11. Procured by</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">12. Current Holder</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">13. Asset Status</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">14. HQ Availability</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">15. Present Condition</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">16. Room Name</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">17. Comments</span>
+                  <span className="p-1.5 bg-slate-50 border border-slate-200 rounded">18. Dispose Date</span>
+                </div>
+                <p className="text-[10px] text-emerald-800 font-medium">
+                  💡 {lang === 'bn'
+                    ? 'বিশেষ সুবিধা: আপনি হেডারসহ বা হেডার ছাড়া যেকোনো ভাবে পেস্ট করতে পারেন। পেস্ট করার সাথে সাথে স্বয়ংক্রিয়ভাবে নিচে প্রিভিউ চলে আসবে।'
+                    : 'Note: You can paste with or without headers. The system will auto-detect and show the preview instantly.'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Paste Input Area */}
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
+              <label className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center space-x-1.5">
+                <span>{lang === 'bn' ? 'এক্সেল থেকে কপি করে নিচে পেস্ট করুন (Paste Rows from Excel):' : 'Paste Rows from Excel / CSV:'}</span>
+              </label>
+
+              <div className="flex items-center space-x-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setInputText(sampleTemplate)}
-                  className="text-red-600 hover:text-red-700 font-semibold underline text-[11px] cursor-pointer"
+                  onClick={handleClipboardPaste}
+                  className="inline-flex items-center space-x-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg border border-slate-300 text-[11px] transition-colors cursor-pointer"
+                  title="Paste directly from clipboard"
                 >
-                  {lang === 'bn' ? 'নমুনা ফরম্যাট পেস্ট করুন' : 'Load Sample Format'}
+                  <Clipboard className="w-3.5 h-3.5 text-slate-600" />
+                  <span>{lang === 'bn' ? 'ক্লিপবোর্ড থেকে পেস্ট করুন' : 'Paste from Clipboard'}</span>
                 </button>
-                <label className="inline-flex items-center space-x-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer border border-slate-300 text-[11px]">
+
+                <label className="inline-flex items-center space-x-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer border border-slate-300 text-[11px] transition-colors">
                   <Upload className="w-3 h-3 text-slate-500" />
-                  <span>{lang === 'bn' ? 'CSV ফাইল আপলোড' : 'Upload CSV'}</span>
-                  <input type="file" accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
+                  <span>{lang === 'bn' ? 'ফাইল আপলোড' : 'Upload File'}</span>
+                  <input type="file" accept=".csv,.txt,.tsv" onChange={handleFileUpload} className="hidden" />
                 </label>
               </div>
             </div>
 
             <textarea
-              rows={6}
+              ref={textareaRef}
+              rows={7}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={`Title [Tab] Category [Tab] Location [Tab] PurchaseDate [Tab] Cost [Tab] Condition [Tab] Room\nExample:\nDell Laptop Core i5\tIT_Electronics\tHead Office\t2024-02-15\t85000\tUsable\tAdmin Room 101`}
-              className="w-full p-3 font-mono text-xs border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-500 bg-slate-50"
+              placeholder={
+                lang === 'bn'
+                  ? 'আপনার এক্সেল শিট থেকে সারিগুলো সিলেক্ট ও কপি করে (Ctrl + C) এখানে পেস্ট (Ctrl + V) করুন...\nপেস্ট করার সাথে সাথেই সিস্টেম স্বয়ংক্রিয়ভাবে সম্পদগুলো শনাক্ত করে নিচে তালিকা দেখাবে।'
+                  : 'Select and copy rows from your Excel sheet (Ctrl + C) and paste (Ctrl + V) here...\nRows will be parsed automatically upon paste.'
+              }
+              className="w-full p-3 font-mono text-xs border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-500 bg-slate-50 shadow-inner leading-relaxed focus:bg-white transition-colors"
             />
-            <p className="text-[10px] text-slate-500 mt-1">
-              {lang === 'bn'
-                ? 'কলাম ক্রম: সম্পদ নাম | ক্যাটাগরি | এরিয়া (যেমন Head Office, Kamalapur, Mirpur) | ক্রয় তারিখ | মূল্য (টাকা) | অবস্থা (Usable/Repairable/Unusable/Disposed) | রুম'
-                : 'Columns: Title | Category | Area Location | Purchase Date (YYYY-MM-DD) | Cost (BDT) | Condition | Room'}
-            </p>
+          </div>
+
+          {/* Quick status & clear button */}
+          <div className="flex items-center justify-between text-xs">
+            {parsedPreview.length > 0 ? (
+              <div className="flex items-center space-x-2 text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>
+                  {lang === 'bn'
+                    ? `✓ সফলভাবে ${parsedPreview.length}টি সম্পদ শনাক্ত হয়েছে!`
+                    : `✓ Successfully detected ${parsedPreview.length} asset items!`}
+                </span>
+              </div>
+            ) : inputText.trim() ? (
+              <span className="text-slate-500 flex items-center space-x-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-1" />
+                <span>{lang === 'bn' ? 'ডাটা বিশ্লেষণ করা হচ্ছে...' : 'Parsing data...'}</span>
+              </span>
+            ) : (
+              <span className="text-slate-400 text-[11px]">
+                {lang === 'bn'
+                  ? '💡 এক্সেলের ১৮টি কলামের যেকোনো সারি কপি করে সরাসরি পেস্ট করুন'
+                  : '💡 Copy any rows from your 18-column Excel sheet and paste above'}
+              </span>
+            )}
+
+            {inputText.trim() && (
+              <button
+                type="button"
+                onClick={() => {
+                  setInputText('');
+                  setParsedPreview([]);
+                  setErrorMsg('');
+                }}
+                className="text-xs text-rose-600 hover:text-rose-800 font-semibold cursor-pointer flex items-center space-x-1 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'বক্স পরিষ্কার করুন (Clear)' : 'Clear Text'}</span>
+              </button>
+            )}
           </div>
 
           {errorMsg && (
@@ -305,62 +829,64 @@ Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\t
             </div>
           )}
 
-          {/* Action to Parse */}
-          <div className="flex items-center space-x-2">
-            <button
-              type="button"
-              onClick={handleParse}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-colors flex items-center space-x-1.5 cursor-pointer shadow-xs"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>{lang === 'bn' ? 'টেক্সট পার্স ও যাচাই করুন' : 'Parse & Validate Rows'}</span>
-            </button>
-          </div>
-
           {/* Parsed Preview Table */}
           {parsedPreview.length > 0 && (
-            <div className="border border-slate-200 rounded-xl overflow-hidden mt-3">
-              <div className="bg-slate-100 px-3 py-2 font-bold text-slate-800 flex items-center justify-between text-xs">
-                <span>
-                  {lang === 'bn'
-                    ? `যাচাইকৃত সম্পদ (${parsedPreview.length}টি আইটেম)`
-                    : `Verified Asset Items (${parsedPreview.length})`}
-                </span>
-                <span className="text-[11px] text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded">
-                  {lang === 'bn' ? 'ডাটাবেজে যুক্ত করার জন্য প্রস্তুত' : 'Ready for database save'}
+            <div className="border border-slate-200 rounded-xl overflow-hidden mt-3 shadow-2xs">
+              <div className="bg-slate-100 px-4 py-2.5 font-bold text-slate-800 flex items-center justify-between text-xs">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>
+                    {lang === 'bn'
+                      ? `যাচাইকৃত সম্পদ তালিকা (${parsedPreview.length} টি আইটেম পাওয়া গেছে)`
+                      : `Verified Asset Items (${parsedPreview.length} items parsed)`}
+                  </span>
+                </div>
+                <span className="text-[11px] text-emerald-800 font-bold bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded">
+                  {lang === 'bn' ? '✓ ক্লাউড ডেটাবেজে সংরক্ষণের জন্য প্রস্তুত' : '✓ Ready for Cloud Save'}
                 </span>
               </div>
-              <div className="max-h-52 overflow-y-auto text-[11px]">
+
+              <div className="max-h-64 overflow-y-auto text-[11px]">
                 <table className="min-w-full divide-y divide-slate-200">
-                  <thead className="bg-slate-50 font-semibold text-slate-600">
+                  <thead className="bg-slate-50 font-semibold text-slate-600 sticky top-0 shadow-2xs">
                     <tr>
-                      <th className="px-2.5 py-1.5 text-left">SL</th>
-                      <th className="px-2.5 py-1.5 text-left">Title</th>
-                      <th className="px-2.5 py-1.5 text-left">Category</th>
-                      <th className="px-2.5 py-1.5 text-left">Location</th>
-                      <th className="px-2.5 py-1.5 text-right">Cost (BDT)</th>
-                      <th className="px-2.5 py-1.5 text-center">Status</th>
+                      <th className="px-3 py-2 text-left">SL</th>
+                      <th className="px-3 py-2 text-left font-bold text-red-700">Asset ID Number</th>
+                      <th className="px-3 py-2 text-left">Item Name</th>
+                      <th className="px-3 py-2 text-left">Category</th>
+                      <th className="px-3 py-2 text-left">Location (Center)</th>
+                      <th className="px-3 py-2 text-left">Date</th>
+                      <th className="px-3 py-2 text-right">Cost (BDT)</th>
+                      <th className="px-3 py-2 text-center">Condition</th>
+                      <th className="px-3 py-2 text-left">Room</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {parsedPreview.map((item, i) => {
                       const matchedArea = areas.find((a) => a.id === item.assignedAreaId);
                       return (
-                        <tr key={i} className="hover:bg-slate-50">
-                          <td className="px-2.5 py-1 text-slate-400 font-mono">{i + 1}</td>
-                          <td className="px-2.5 py-1 font-bold text-slate-900">{item.titleEn}</td>
-                          <td className="px-2.5 py-1 text-slate-600">{item.category}</td>
-                          <td className="px-2.5 py-1 text-slate-700">
+                        <tr key={`${item.id || 'auto'}_${i}`} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-3 py-2 text-slate-400 font-mono">{i + 1}</td>
+                          <td className="px-3 py-2 font-mono font-bold text-red-600 whitespace-nowrap">
+                            <span className="bg-red-50 border border-red-200 px-1.5 py-0.5 rounded text-[10px]">
+                              {item.id || 'Auto ID'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-bold text-slate-900">{item.titleEn}</td>
+                          <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{item.category}</td>
+                          <td className="px-3 py-2 text-slate-700 whitespace-nowrap">
                             {matchedArea ? (lang === 'bn' ? matchedArea.nameBn : matchedArea.nameEn) : 'Head Office'}
                           </td>
-                          <td className="px-2.5 py-1 text-right font-semibold text-slate-800">
+                          <td className="px-3 py-2 text-slate-500 whitespace-nowrap font-mono">{item.purchaseDate}</td>
+                          <td className="px-3 py-2 text-right font-semibold text-slate-800 whitespace-nowrap">
                             {(item.purchaseValueBDT || 0).toLocaleString()} ৳
                           </td>
-                          <td className="px-2.5 py-1 text-center">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <td className="px-3 py-2 text-center whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                               {item.usabilityStatus}
                             </span>
                           </td>
+                          <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{item.specificRoom}</td>
                         </tr>
                       );
                     })}
@@ -372,34 +898,52 @@ Executive Wooden Table\tFurniture\tInclusive School\t2024-01-05\t24000\tUsable\t
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex items-center justify-between shrink-0">
+        <div className="bg-slate-100 px-6 py-4 border-t border-slate-200 flex items-center justify-between shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-200 rounded-xl font-medium transition-colors cursor-pointer"
+            className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-200 rounded-xl font-medium transition-colors cursor-pointer text-xs"
           >
             {lang === 'bn' ? 'বাতিল' : 'Cancel'}
           </button>
 
           <button
             type="button"
-            disabled={parsedPreview.length === 0}
+            disabled={parsedPreview.length === 0 || isSaving}
             onClick={handleSaveToDatabase}
-            className={`px-5 py-2 rounded-xl font-bold flex items-center space-x-1.5 shadow-md transition-colors cursor-pointer ${
-              parsedPreview.length > 0
+            className={`px-5 py-2.5 rounded-xl font-bold flex items-center space-x-2 shadow-md transition-all text-xs cursor-pointer ${
+              saveSuccess
+                ? 'bg-emerald-600 text-white'
+                : isSaving
+                ? 'bg-slate-700 text-slate-200 cursor-wait'
+                : parsedPreview.length > 0
                 ? 'bg-red-600 hover:bg-red-700 text-white'
-                : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
             }`}
           >
-            <CheckCircle2 className="w-4 h-4" />
+            {saveSuccess ? (
+              <CheckCircle2 className="w-4 h-4 text-white" />
+            ) : isSaving ? (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )}
             <span>
-              {replaceExisting
+              {saveSuccess
                 ? lang === 'bn'
-                  ? 'প্রতিস্থাপন করে সংরক্ষণ করুন'
-                  : 'Replace & Save Assets'
+                  ? '✓ সফলভাবে সংরক্ষিত হয়েছে!'
+                  : '✓ Successfully Saved!'
+                : isSaving
+                ? lang === 'bn'
+                  ? `সংরক্ষণ করা হচ্ছে... (${parsedPreview.length}টি সম্পদ)`
+                  : `Saving ${parsedPreview.length} assets...`
+                : replaceExisting
+                ? lang === 'bn'
+                  ? `সম্পূর্ণ নতুন ${parsedPreview.length}টি সম্পদ দিয়ে প্রতিস্থাপন ও সেভ করুন`
+                  : `Replace All & Save ${parsedPreview.length} Assets`
                 : lang === 'bn'
-                ? 'ডাটাবেজে যুক্ত করুন'
-                : 'Append & Save Assets'}
+                ? `${parsedPreview.length}টি সম্পদ ক্লাউড ডেটাবেজে যুক্ত করুন`
+                : `Save ${parsedPreview.length} Assets to Cloud Database`}
             </span>
           </button>
         </div>

@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { Language, translations } from '../i18n/translations';
-import { storage } from '../services/storage';
+import { deduplicateAssets, storage } from '../services/storage';
 import { Area, Asset, AssetCategory, UsabilityStatus, User } from '../types';
 import { calculateDepreciation, formatBDT } from '../utils/depreciation';
 
@@ -39,8 +39,6 @@ export const PrintAuditReportModal: React.FC<PrintAuditReportModalProps> = ({
   currentUser,
   lang,
 }) => {
-  if (!isOpen) return null;
-
   const t = translations[lang];
   const orgProfile = storage.getOrgProfile();
 
@@ -64,6 +62,41 @@ export const PrintAuditReportModal: React.FC<PrintAuditReportModalProps> = ({
   );
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedCondition, setSelectedCondition] = useState<string>('ALL');
+
+  // Base Scoped Assets (Tenant isolation for field staff, full access for HO)
+  const scopedAssets = useMemo(() => {
+    if (isHeadOffice) return assets;
+    return assets.filter((a) => currentUser.assignedAreaIds.includes(a.assignedAreaId));
+  }, [assets, currentUser, isHeadOffice]);
+
+  // Filtered Assets based on user selections
+  const filteredAssets = useMemo(() => {
+    const list = scopedAssets.filter((asset) => {
+      // If Disposed Assets mode is selected (Head Office Feature)
+      if (reportMode === 'disposed') {
+        if (asset.usabilityStatus !== 'Disposed') return false;
+      } else {
+        // Condition filter in standard mode
+        if (selectedCondition !== 'ALL' && asset.usabilityStatus !== selectedCondition) {
+          return false;
+        }
+      }
+
+      // Area filter
+      if (selectedAreaId !== 'ALL' && asset.assignedAreaId !== selectedAreaId) {
+        return false;
+      }
+
+      // Category filter
+      if (selectedCategory !== 'ALL' && asset.category !== selectedCategory) {
+        return false;
+      }
+
+      return true;
+    });
+
+    return deduplicateAssets(list);
+  }, [scopedAssets, reportMode, selectedAreaId, selectedCategory, selectedCondition]);
 
   // Human Area Name helper (NO RAW AREA CODES)
   const getAreaName = (areaId: string): string => {
@@ -109,39 +142,6 @@ export const PrintAuditReportModal: React.FC<PrintAuditReportModalProps> = ({
         return lang === 'bn' ? 'বাতিলকৃত / অপসারিত (Disposed)' : 'Disposed';
     }
   };
-
-  // Base Scoped Assets (Tenant isolation for field staff, full access for HO)
-  const scopedAssets = useMemo(() => {
-    if (isHeadOffice) return assets;
-    return assets.filter((a) => currentUser.assignedAreaIds.includes(a.assignedAreaId));
-  }, [assets, currentUser, isHeadOffice]);
-
-  // Filtered Assets based on user selections
-  const filteredAssets = useMemo(() => {
-    return scopedAssets.filter((asset) => {
-      // If Disposed Assets mode is selected (Head Office Feature)
-      if (reportMode === 'disposed') {
-        if (asset.usabilityStatus !== 'Disposed') return false;
-      } else {
-        // Condition filter in standard mode
-        if (selectedCondition !== 'ALL' && asset.usabilityStatus !== selectedCondition) {
-          return false;
-        }
-      }
-
-      // Area filter
-      if (selectedAreaId !== 'ALL' && asset.assignedAreaId !== selectedAreaId) {
-        return false;
-      }
-
-      // Category filter
-      if (selectedCategory !== 'ALL' && asset.category !== selectedCategory) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [scopedAssets, reportMode, selectedAreaId, selectedCategory, selectedCondition]);
 
   // Aggregate Financial Statistics
   let totalOriginalCost = 0;
@@ -261,6 +261,8 @@ export const PrintAuditReportModal: React.FC<PrintAuditReportModalProps> = ({
     }
     return getAreaName(selectedAreaId);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
@@ -681,7 +683,7 @@ export const PrintAuditReportModal: React.FC<PrintAuditReportModalProps> = ({
                       const areaName = getAreaName(asset.assignedAreaId);
 
                       return (
-                        <tr key={asset.id} className="hover:bg-slate-50 transition-colors">
+                        <tr key={`${asset.id}_${index}`} className="hover:bg-slate-50 transition-colors">
                           <td className="px-3 py-2.5 text-slate-400 font-mono">{index + 1}</td>
                           <td className="px-3 py-2.5 font-mono font-bold text-slate-900 whitespace-nowrap">
                             {asset.id}
@@ -788,7 +790,7 @@ export const PrintAuditReportModal: React.FC<PrintAuditReportModalProps> = ({
                       );
 
                       return (
-                        <tr key={asset.id} className="hover:bg-slate-50 transition-colors">
+                        <tr key={`${asset.id}_${index}`} className="hover:bg-slate-50 transition-colors">
                           <td className="px-3 py-2 text-slate-400 font-mono">{index + 1}</td>
                           <td className="px-3 py-2 font-mono font-bold text-slate-900 whitespace-nowrap">
                             {asset.id}

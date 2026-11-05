@@ -26,7 +26,7 @@ import {
   X,
 } from 'lucide-react';
 import { Language, translations } from '../i18n/translations';
-import { storage } from '../services/storage';
+import { deduplicateAssets, storage } from '../services/storage';
 import { Area, Asset, AssetCategory, UsabilityStatus, User } from '../types';
 import { calculateDepreciation, formatBDT } from '../utils/depreciation';
 import { BulkImportAssetsModal } from './BulkImportAssetsModal';
@@ -86,7 +86,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
 
   // Filtered Assets
   const filteredAssets = useMemo(() => {
-    return scopedAssets.filter((asset) => {
+    const matched = scopedAssets.filter((asset) => {
       // Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -123,6 +123,8 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
 
       return true;
     });
+
+    return deduplicateAssets(matched);
   }, [scopedAssets, searchQuery, selectedCategory, selectedStatus, selectedArea]);
 
   // Export to CSV
@@ -277,10 +279,10 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                 <button
                   onClick={() => setIsBulkImportOpen(true)}
                   className="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-slate-800 text-white hover:bg-slate-900 shadow-xs transition-colors cursor-pointer"
-                  title="Bulk Import Assets"
+                  title="Bulk Import / Upload from Excel"
                 >
-                  <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{lang === 'bn' ? 'বাল্ক আমদানি' : 'Bulk Import'}</span>
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{lang === 'bn' ? 'এক্সেল বাল্ক আপলোড' : 'Excel Bulk Upload'}</span>
                 </button>
               </>
             )}
@@ -434,13 +436,13 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white font-medium">
-                {filteredAssets.map((asset) => {
+                {filteredAssets.map((asset, index) => {
                   const area = areas.find((ar) => ar.id === asset.assignedAreaId);
                   const dep = calculateDepreciation(asset.purchaseDate, asset.purchaseValueBDT, asset.category);
 
                   return (
                     <tr
-                      key={asset.id}
+                      key={`${asset.id}_${index}`}
                       className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
                       onClick={() => onSelectAsset(asset)}
                     >

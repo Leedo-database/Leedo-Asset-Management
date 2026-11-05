@@ -958,14 +958,86 @@ export const DEFAULT_ORG_PROFILE: OrganizationProfile = {
   categoryDepreciationRates: DEFAULT_DEPRECIATION_RATES,
 };
 
-// Default Assets (clean and fresh database - no demo data)
-export const DEFAULT_ASSETS: Asset[] = [];
+// Official Registered Assets (Preserving exact institutional Asset IDs)
+export const DEFAULT_ASSETS: Asset[] = [
+  {
+    id: 'LEEDO/HO/PC-001',
+    titleEn: 'PC (ED sir room)',
+    titleBn: 'কম্পিউটার পিসি (ইডি স্যারের রুম)',
+    category: 'IT_Electronics',
+    acquisitionType: 'Purchased',
+    donorOrVendor: 'LEEDO Head Office',
+    purchaseDate: '2025-11-01',
+    purchaseValueBDT: 36000,
+    initialCondition: 'New',
+    usabilityStatus: 'Usable',
+    assignedAreaId: 'area-ho',
+    specificRoom: 'ED sir room',
+    remarks: 'Office Equipment | Location ID: LEEDO0001 | Holder: LEEDO | Running',
+    createdBy: 'Md. Habibur Rahman (Accountant)',
+    createdAt: '2025-11-01T09:00:00.000Z',
+    updatedAt: '2025-11-01T09:00:00.000Z',
+  },
+  {
+    id: 'LEEDO/HO/PC-002',
+    titleEn: 'PC (Accounts Room - 1)',
+    titleBn: 'কম্পিউটার পিসি (একাউন্টস রুম - ১)',
+    category: 'IT_Electronics',
+    acquisitionType: 'Purchased',
+    donorOrVendor: 'LEEDO Head Office',
+    purchaseDate: '2025-11-01',
+    purchaseValueBDT: 36000,
+    initialCondition: 'New',
+    usabilityStatus: 'Usable',
+    assignedAreaId: 'area-ho',
+    specificRoom: 'Accounts Room',
+    remarks: 'Office Equipment | Location ID: LEEDO0002 | Holder: LEEDO | Running',
+    createdBy: 'Md. Habibur Rahman (Accountant)',
+    createdAt: '2025-11-01T09:00:00.000Z',
+    updatedAt: '2025-11-01T09:00:00.000Z',
+  },
+  {
+    id: 'LEEDO/HO/PC-003',
+    titleEn: 'PC (Accounts Room - 2)',
+    titleBn: 'কম্পিউটার পিসি (একাউন্টস রুম - ২)',
+    category: 'IT_Electronics',
+    acquisitionType: 'Purchased',
+    donorOrVendor: 'LEEDO Head Office',
+    purchaseDate: '2025-11-01',
+    purchaseValueBDT: 36000,
+    initialCondition: 'New',
+    usabilityStatus: 'Usable',
+    assignedAreaId: 'area-ho',
+    specificRoom: 'Accounts Room',
+    remarks: 'Office Equipment | Location ID: LEEDO0003 | Holder: LEEDO | Running',
+    createdBy: 'Md. Habibur Rahman (Accountant)',
+    createdAt: '2025-11-01T09:00:00.000Z',
+    updatedAt: '2025-11-01T09:00:00.000Z',
+  },
+];
 
 // Default Disposal Requests (clean and fresh database - no demo data)
 export const DEFAULT_DISPOSALS: DisposalRequest[] = [];
 
 // Default Asset Transfers (clean and fresh database - no demo data)
 export const DEFAULT_TRANSFERS: AssetTransfer[] = [];
+
+// Helper to ensure an array of assets contains strictly unique IDs
+export function deduplicateAssets(assets: Asset[]): Asset[] {
+  if (!Array.isArray(assets)) return [];
+  const seen = new Set<string>();
+  const unique: Asset[] = [];
+  for (const asset of assets) {
+    if (!asset || !asset.id) continue;
+    const cleanId = String(asset.id).trim();
+    if (!cleanId) continue;
+    if (!seen.has(cleanId)) {
+      seen.add(cleanId);
+      unique.push({ ...asset, id: cleanId });
+    }
+  }
+  return unique;
+}
 
 class StorageService {
   private listeners: (() => void)[] = [];
@@ -976,16 +1048,16 @@ class StorageService {
 
   private initDefaults() {
     const dbVersion = localStorage.getItem(`${STORAGE_PREFIX}version`);
-    if (dbVersion !== 'v8_leedo_fresh_clean_no_demo') {
+    if (dbVersion !== 'v9_leedo_official_excel_assets') {
       localStorage.setItem(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
       localStorage.setItem(KEYS.AREAS, JSON.stringify(DEFAULT_AREAS));
-      localStorage.setItem(KEYS.ASSETS, JSON.stringify([]));
+      localStorage.setItem(KEYS.ASSETS, JSON.stringify(DEFAULT_ASSETS));
       localStorage.setItem(KEYS.TRANSFERS, JSON.stringify([]));
       localStorage.setItem(KEYS.DISPOSALS, JSON.stringify([]));
       localStorage.setItem(KEYS.ORG_PROFILE, JSON.stringify(DEFAULT_ORG_PROFILE));
       // Start with no logged in user so login screen appears first!
       localStorage.removeItem(KEYS.CURRENT_USER);
-      localStorage.setItem(`${STORAGE_PREFIX}version`, 'v8_leedo_fresh_clean_no_demo');
+      localStorage.setItem(`${STORAGE_PREFIX}version`, 'v9_leedo_official_excel_assets');
     }
 
     if (!localStorage.getItem(KEYS.AREAS)) {
@@ -995,7 +1067,7 @@ class StorageService {
       localStorage.setItem(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
     }
     if (!localStorage.getItem(KEYS.ASSETS)) {
-      localStorage.setItem(KEYS.ASSETS, JSON.stringify([]));
+      localStorage.setItem(KEYS.ASSETS, JSON.stringify(DEFAULT_ASSETS));
     }
     if (!localStorage.getItem(KEYS.TRANSFERS)) {
       localStorage.setItem(KEYS.TRANSFERS, JSON.stringify([]));
@@ -1027,7 +1099,13 @@ class StorageService {
 
   // Cloud sync incoming receivers
   public setAllAssetsFromCloud(assets: Asset[]): void {
-    localStorage.setItem(KEYS.ASSETS, JSON.stringify(assets));
+    const unique = deduplicateAssets(assets);
+    if (unique.length === 0) {
+      // Do not wipe local assets if cloud query is temporarily empty
+      const local = this.getAssets();
+      if (local.length > 0) return;
+    }
+    localStorage.setItem(KEYS.ASSETS, JSON.stringify(unique));
     this.notify();
   }
 
@@ -1183,7 +1261,8 @@ class StorageService {
   // --- Assets ---
   public getAssets(): Asset[] {
     const raw = localStorage.getItem(KEYS.ASSETS);
-    return raw ? JSON.parse(raw) : DEFAULT_ASSETS;
+    const parsed: Asset[] = raw ? JSON.parse(raw) : DEFAULT_ASSETS;
+    return deduplicateAssets(parsed);
   }
 
   public saveAsset(asset: Asset): void {
@@ -1199,7 +1278,8 @@ class StorageService {
     } else {
       assets.unshift(updatedAsset);
     }
-    localStorage.setItem(KEYS.ASSETS, JSON.stringify(assets));
+    const cleanAssets = deduplicateAssets(assets);
+    localStorage.setItem(KEYS.ASSETS, JSON.stringify(cleanAssets));
     this.notify();
     this.cloudSyncHandler?.('saveAsset', updatedAsset);
   }
@@ -1211,10 +1291,11 @@ class StorageService {
     this.cloudSyncHandler?.('deleteAsset', assetId);
   }
 
-  public setAllAssets(newAssets: Asset[]): void {
-    localStorage.setItem(KEYS.ASSETS, JSON.stringify(newAssets));
+  public setAllAssets(newAssets: Asset[], replace = false): void {
+    const cleanAssets = deduplicateAssets(newAssets);
+    localStorage.setItem(KEYS.ASSETS, JSON.stringify(cleanAssets));
     this.notify();
-    this.cloudSyncHandler?.('bulkSaveAssets', { assets: newAssets, replace: true });
+    this.cloudSyncHandler?.('bulkSaveAssets', { assets: cleanAssets, replace });
   }
 
   public clearAssets(): void {
