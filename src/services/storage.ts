@@ -1,6 +1,7 @@
 import {
   Area,
   Asset,
+  AssetCategory,
   AssetTransfer,
   DisposalRequest,
   OrganizationProfile,
@@ -960,6 +961,7 @@ export const DEFAULT_ORG_PROFILE: OrganizationProfile = {
 
 // Official Registered Assets (Preserving exact institutional Asset IDs)
 export const DEFAULT_ASSETS: Asset[] = [
+  // Head Office Equipment
   {
     id: 'LEEDO/HO/PC-001',
     titleEn: 'PC (ED sir room)',
@@ -1014,6 +1016,115 @@ export const DEFAULT_ASSETS: Asset[] = [
     createdAt: '2025-11-01T09:00:00.000Z',
     updatedAt: '2025-11-01T09:00:00.000Z',
   },
+  // Peace Home (PCH) Assets
+  {
+    id: 'LEEDO-PH-CF01',
+    titleEn: 'Ceiling fan',
+    titleBn: 'সিলিং ফ্যান',
+    category: 'Appliances',
+    acquisitionType: 'Purchased',
+    donorOrVendor: 'LEEDO',
+    purchaseDate: '2025-11-01',
+    purchaseValueBDT: 3500,
+    initialCondition: 'New',
+    usabilityStatus: 'Usable',
+    assignedAreaId: 'area-pch',
+    specificRoom: 'Peace Home',
+    remarks: 'Group: Electrical & Electronics Item | Current Holder: LEEDO | Active',
+    createdBy: 'Md. Habibur Rahman (Accountant)',
+    createdAt: '2025-11-01T09:00:00.000Z',
+    updatedAt: '2025-11-01T09:00:00.000Z',
+  },
+  {
+    id: 'LEEDO-PH-CF02',
+    titleEn: 'Ceiling fan',
+    titleBn: 'সিলিং ফ্যান',
+    category: 'Appliances',
+    acquisitionType: 'Purchased',
+    donorOrVendor: 'LEEDO',
+    purchaseDate: '2025-11-01',
+    purchaseValueBDT: 3500,
+    initialCondition: 'New',
+    usabilityStatus: 'Usable',
+    assignedAreaId: 'area-pch',
+    specificRoom: 'Peace Home',
+    remarks: 'Group: Electrical & Electronics Item | Current Holder: LEEDO | Active',
+    createdBy: 'Md. Habibur Rahman (Accountant)',
+    createdAt: '2025-11-01T09:00:00.000Z',
+    updatedAt: '2025-11-01T09:00:00.000Z',
+  },
+  {
+    id: 'LEEDO-PH-CF03',
+    titleEn: 'Ceiling fan',
+    titleBn: 'সিলিং ফ্যান',
+    category: 'Appliances',
+    acquisitionType: 'Purchased',
+    donorOrVendor: 'LEEDO',
+    purchaseDate: '2025-11-01',
+    purchaseValueBDT: 3500,
+    initialCondition: 'New',
+    usabilityStatus: 'Usable',
+    assignedAreaId: 'area-pch',
+    specificRoom: 'Peace Home',
+    remarks: 'Group: Electrical & Electronics Item | Current Holder: LEEDO | Active',
+    createdBy: 'Md. Habibur Rahman (Accountant)',
+    createdAt: '2025-11-01T09:00:00.000Z',
+    updatedAt: '2025-11-01T09:00:00.000Z',
+  },
+  {
+    id: 'LEEDO-PH-CF04',
+    titleEn: 'Ceiling fan',
+    titleBn: 'সিলিং ফ্যান',
+    category: 'Appliances',
+    acquisitionType: 'Purchased',
+    donorOrVendor: 'LEEDO',
+    purchaseDate: '2025-11-01',
+    purchaseValueBDT: 3500,
+    initialCondition: 'New',
+    usabilityStatus: 'Usable',
+    assignedAreaId: 'area-pch',
+    specificRoom: 'Peace Home',
+    remarks: 'Group: Electrical & Electronics Item | Current Holder: LEEDO | Active',
+    createdBy: 'Md. Habibur Rahman (Accountant)',
+    createdAt: '2025-11-01T09:00:00.000Z',
+    updatedAt: '2025-11-01T09:00:00.000Z',
+  },
+  {
+    id: 'LEEDO-PH-CF05',
+    titleEn: 'Ceiling fan',
+    titleBn: 'সিলিং ফ্যান',
+    category: 'Appliances',
+    acquisitionType: 'Purchased',
+    donorOrVendor: 'LEEDO',
+    purchaseDate: '2025-11-01',
+    purchaseValueBDT: 3500,
+    initialCondition: 'New',
+    usabilityStatus: 'Usable',
+    assignedAreaId: 'area-pch',
+    specificRoom: 'Peace Home',
+    remarks: 'Group: Electrical & Electronics Item | Current Holder: LEEDO | Active',
+    createdBy: 'Md. Habibur Rahman (Accountant)',
+    createdAt: '2025-11-01T09:00:00.000Z',
+    updatedAt: '2025-11-01T09:00:00.000Z',
+  },
+  {
+    id: 'LEEDO-PH-CF06',
+    titleEn: 'Ceiling fan',
+    titleBn: 'সিলিং ফ্যান',
+    category: 'Appliances',
+    acquisitionType: 'Purchased',
+    donorOrVendor: 'LEEDO',
+    purchaseDate: '2025-11-01',
+    purchaseValueBDT: 3500,
+    initialCondition: 'New',
+    usabilityStatus: 'Usable',
+    assignedAreaId: 'area-pch',
+    specificRoom: 'Peace Home',
+    remarks: 'Group: Electrical & Electronics Item | Current Holder: LEEDO | Active',
+    createdBy: 'Md. Habibur Rahman (Accountant)',
+    createdAt: '2025-11-01T09:00:00.000Z',
+    updatedAt: '2025-11-01T09:00:00.000Z',
+  },
 ];
 
 // Default Disposal Requests (clean and fresh database - no demo data)
@@ -1039,6 +1150,303 @@ export function deduplicateAssets(assets: Asset[]): Asset[] {
   return unique;
 }
 
+/**
+ * Intelligent category detection for LEEDO assets.
+ * Accurately prioritizes Furniture (almirah, chair, table, etc.) and Appliances (ceiling fan, etc.)
+ * over generic groups such as 'Office Equipment' or 'Electrical & Electronics Item'.
+ */
+export function detectAssetCategory(itemName = '', groupOrDesc = ''): AssetCategory {
+  const text = `${itemName} ${groupOrDesc}`.toLowerCase();
+
+  const hasWord = (word: string) => {
+    const regex = new RegExp(`(^|[^a-z0-9])${word}([^a-z0-9]|$)`, 'i');
+    return regex.test(text);
+  };
+
+  // 1. Furniture: Takes absolute top priority
+  // Almirah, Almari, Amari, Chair, Table, Desk, Shelf, Rack, Cabinet, Sofa, Bed, Cot, Stool, Bench, Drawer, Cupboard, Wardrobe, Warddrop
+  if (
+    text.includes('almirah') ||
+    text.includes('almari') ||
+    text.includes('amari') ||
+    text.includes('wardrobe') ||
+    text.includes('warddrop') ||
+    text.includes('worddrop') ||
+    text.includes('cupboard') ||
+    text.includes('chair') ||
+    text.includes('armchair') ||
+    (text.includes('table') && !text.includes('tablet')) ||
+    (text.includes('desk') && !text.includes('desktop')) ||
+    text.includes('shelf') ||
+    text.includes('bookshelf') ||
+    text.includes('book shelf') ||
+    text.includes('rack') ||
+    text.includes('shoe rack') ||
+    text.includes('water stand') ||
+    (text.includes('stand') && !text.includes('stand fan') && !text.includes('mic stand') && !text.includes('white board') && !text.includes('board stand')) ||
+    text.includes('cabinet') ||
+    text.includes('file cabinet') ||
+    text.includes('filing cabinet') ||
+    text.includes('sofa') ||
+    text.includes('couch') ||
+    hasWord('bed') ||
+    hasWord('beds') ||
+    hasWord('cot') ||
+    hasWord('cots') ||
+    text.includes('mattress') ||
+    text.includes('stool') ||
+    text.includes('bench') ||
+    text.includes('drawer') ||
+    text.includes('drawers') ||
+    text.includes('trank') ||
+    text.includes('trunk') ||
+    text.includes('curtain') ||
+    text.includes('curtains') ||
+    text.includes('furniture') ||
+    text.includes('ফার্নিচার') ||
+    text.includes('চেয়ার') ||
+    text.includes('টেবিল') ||
+    text.includes('আলমারি') ||
+    text.includes('আলমিরা') ||
+    text.includes('সোফা') ||
+    text.includes('খাট') ||
+    text.includes('বিছানা') ||
+    text.includes('বেঞ্চ') ||
+    text.includes('তাক') ||
+    text.includes('র‍্যাক') ||
+    text.includes('ক্যাবিনেট') ||
+    text.includes('ট্রাঙ্ক') ||
+    text.includes('পর্দা')
+  ) {
+    return 'Furniture';
+  }
+
+  // 2. Appliances: Fans (Ceiling fan, celling fan, stand fan, exhaust fan), AC, Refrigerator, Freeze, Filter/Purifier, Geyser/Heater, Sewing machine
+  if (
+    text.includes('ceiling fan') ||
+    text.includes('celling fan') ||
+    text.includes('cilling fan') ||
+    text.includes('celling') ||
+    text.includes('cilling') ||
+    text.includes('exhaust fan') ||
+    text.includes('stand fan') ||
+    text.includes('table fan') ||
+    text.includes('wall fan') ||
+    hasWord('fan') ||
+    text.includes('fans') ||
+    text.includes('sewing machine') ||
+    text.includes('swing machine') ||
+    text.includes('sewing') ||
+    text.includes('air condition') ||
+    text.includes('air conditioner') ||
+    hasWord('ac') ||
+    text.includes('cooler') ||
+    text.includes('fridge') ||
+    text.includes('refrigerator') ||
+    text.includes('deep fridge') ||
+    text.includes('freezer') ||
+    text.includes('freeze') ||
+    text.includes('purifier') ||
+    text.includes('water purifier') ||
+    text.includes('dispenser') ||
+    text.includes('water dispenser') ||
+    text.includes('water filter') ||
+    text.includes('filter') ||
+    text.includes('geyser') ||
+    text.includes('water heater') ||
+    text.includes('heater') ||
+    text.includes('room heater') ||
+    text.includes('washing machine') ||
+    text.includes('iron') ||
+    text.includes('blender') ||
+    text.includes('appliance') ||
+    text.includes('ফ্যান') ||
+    text.includes('সিলিং ফ্যান') ||
+    text.includes('সেলাই মেশিন') ||
+    text.includes('এসি') ||
+    text.includes('ফ্রিজ') ||
+    text.includes('ফিল্টার') ||
+    text.includes('হিটার')
+  ) {
+    return 'Appliances';
+  }
+
+  // 3. Vehicles
+  if (
+    text.includes('vehicle') ||
+    hasWord('car') ||
+    text.includes('microbus') ||
+    hasWord('micro') ||
+    text.includes('ambulance') ||
+    text.includes('motorcycle') ||
+    text.includes('motorbike') ||
+    hasWord('bike') ||
+    text.includes('bicycle') ||
+    text.includes('cycle') ||
+    text.includes('scooter') ||
+    text.includes('pickup') ||
+    text.includes('গাড়ি') ||
+    text.includes('মাইক্রোবাস') ||
+    text.includes('অ্যাম্বুলেন্স')
+  ) {
+    return 'Vehicle';
+  }
+
+  // 4. Kitchenware
+  if (
+    text.includes('stove') ||
+    text.includes('gas stove') ||
+    text.includes('gas burner') ||
+    text.includes('burner') ||
+    text.includes('gas cylinder') ||
+    text.includes('cylinder') ||
+    hasWord('gas') ||
+    text.includes('dinner set') ||
+    text.includes('dinner') ||
+    text.includes('rice cooker') ||
+    text.includes('cooker') ||
+    text.includes('pot') ||
+    text.includes('pan') ||
+    text.includes('crockery') ||
+    text.includes('utensil') ||
+    text.includes('kitchen') ||
+    text.includes('চুলা') ||
+    text.includes('পাতিল') ||
+    text.includes('হাঁড়ি')
+  ) {
+    return 'Kitchenware';
+  }
+
+  // 5. Medical
+  if (
+    text.includes('medical') ||
+    text.includes('first aid') ||
+    text.includes('fast aid') ||
+    text.includes('stethoscope') ||
+    text.includes('bp machine') ||
+    text.includes('wheelchair') ||
+    text.includes('stretcher') ||
+    text.includes('thermometer') ||
+    text.includes('nebulizer') ||
+    text.includes('oxygen cylinder') ||
+    text.includes('মেডিকেল') ||
+    text.includes('ফার্স্ট এইড')
+  ) {
+    return 'Medical';
+  }
+
+  // 6. Educational
+  if (
+    text.includes('smart board') ||
+    text.includes('display board') ||
+    text.includes('blackboard') ||
+    text.includes('whiteboard') ||
+    text.includes('white board') ||
+    text.includes('notice board') ||
+    (text.includes('board') && !text.includes('keyboard') && !text.includes('key board') && !text.includes('motherboard') && !text.includes('cupboard')) ||
+    text.includes('code of conduct') ||
+    text.includes('harmonium') ||
+    text.includes('tabla') ||
+    text.includes('teaching') ||
+    text.includes('education') ||
+    text.includes('educational') ||
+    text.includes('school bell') ||
+    text.includes('বই') ||
+    text.includes('শিক্ষামূলক')
+  ) {
+    return 'Educational';
+  }
+
+  // 7. IT & Electronics (PC, Computers, Printers, Scanners, Networks, CCTV, Biometrics, Audio/Visual)
+  if (
+    hasWord('pc') ||
+    text.includes('computer') ||
+    text.includes('laptop') ||
+    text.includes('desktop') ||
+    text.includes('monitor') ||
+    hasWord('cpu') ||
+    text.includes('keyboard') ||
+    text.includes('mouse') ||
+    text.includes('printer') ||
+    text.includes('scanner') ||
+    text.includes('photocopier') ||
+    text.includes('copier') ||
+    hasWord('ups') ||
+    hasWord('ips') ||
+    text.includes('inverter') ||
+    text.includes('generator') ||
+    text.includes('server') ||
+    text.includes('router') ||
+    text.includes('wifi') ||
+    text.includes('switch') ||
+    text.includes('modem') ||
+    text.includes('cctv') ||
+    text.includes('cc camera') ||
+    text.includes('camera') ||
+    text.includes('dvr') ||
+    text.includes('nvr') ||
+    text.includes('projector') ||
+    text.includes('biometric') ||
+    text.includes('sound system') ||
+    text.includes('speaker') ||
+    text.includes('amplifier') ||
+    text.includes('microphone') ||
+    hasWord('tv') ||
+    text.includes('television') ||
+    text.includes('tablet') ||
+    text.includes('ipad') ||
+    (text.includes('mobile') && !text.includes('toilet')) ||
+    text.includes('phone') ||
+    text.includes('telephone') ||
+    text.includes('intercom') ||
+    text.includes('hard disk') ||
+    text.includes('ssd') ||
+    text.includes('multiplag') ||
+    text.includes('multiplug') ||
+    text.includes('muntiplag') ||
+    text.includes('power strip') ||
+    text.includes('মাল্টিপ্লাগ') ||
+    hasWord('it') ||
+    text.includes('electronics') ||
+    text.includes('electronic')
+  ) {
+    return 'IT_Electronics';
+  }
+
+  return 'Facility';
+}
+
+/**
+ * Scans assets and automatically heals any misclassified items (such as almirahs, chairs, tables
+ * incorrectly marked as IT_Electronics, or ceiling fans marked as IT_Electronics).
+ */
+export function fixMismatchedCategories(assets: Asset[]): { assets: Asset[]; fixedCount: number } {
+  if (!Array.isArray(assets)) return { assets: [], fixedCount: 0 };
+  let fixedCount = 0;
+  const fixed = assets.map((asset) => {
+    if (!asset) return asset;
+    const detected = detectAssetCategory(
+      asset.titleEn || asset.id || '',
+      `${asset.titleBn || ''} ${asset.remarks || ''}`
+    );
+    // Auto-fix if miscategorized as IT_Electronics, Facility, or empty, when detected as Furniture or Appliances
+    if (
+      asset.category !== detected &&
+      (asset.category === 'IT_Electronics' || asset.category === 'Facility' || !asset.category) &&
+      (detected === 'Furniture' || detected === 'Appliances' || detected === 'Vehicle' || detected === 'Kitchenware' || detected === 'Medical' || detected === 'Educational')
+    ) {
+      fixedCount++;
+      return {
+        ...asset,
+        category: detected,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return asset;
+  });
+  return { assets: fixed, fixedCount };
+}
+
 class StorageService {
   private listeners: (() => void)[] = [];
 
@@ -1047,8 +1455,9 @@ class StorageService {
   }
 
   private initDefaults() {
+    if (typeof localStorage === 'undefined') return;
     const dbVersion = localStorage.getItem(`${STORAGE_PREFIX}version`);
-    if (dbVersion !== 'v9_leedo_official_excel_assets') {
+    if (dbVersion !== 'v10_leedo_official_peace_home_assets') {
       localStorage.setItem(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
       localStorage.setItem(KEYS.AREAS, JSON.stringify(DEFAULT_AREAS));
       localStorage.setItem(KEYS.ASSETS, JSON.stringify(DEFAULT_ASSETS));
@@ -1057,7 +1466,7 @@ class StorageService {
       localStorage.setItem(KEYS.ORG_PROFILE, JSON.stringify(DEFAULT_ORG_PROFILE));
       // Start with no logged in user so login screen appears first!
       localStorage.removeItem(KEYS.CURRENT_USER);
-      localStorage.setItem(`${STORAGE_PREFIX}version`, 'v9_leedo_official_excel_assets');
+      localStorage.setItem(`${STORAGE_PREFIX}version`, 'v10_leedo_official_peace_home_assets');
     }
 
     if (!localStorage.getItem(KEYS.AREAS)) {
@@ -1105,7 +1514,12 @@ class StorageService {
       const local = this.getAssets();
       if (local.length > 0) return;
     }
-    localStorage.setItem(KEYS.ASSETS, JSON.stringify(unique));
+    const { assets: fixed, fixedCount } = fixMismatchedCategories(unique);
+    if (fixedCount > 0) {
+      // Automatically sync fixed categories to cloud
+      this.cloudSyncHandler?.('bulkSaveAssets', { assets: fixed, replace: false });
+    }
+    localStorage.setItem(KEYS.ASSETS, JSON.stringify(fixed));
     this.notify();
   }
 
@@ -1260,9 +1674,16 @@ class StorageService {
 
   // --- Assets ---
   public getAssets(): Asset[] {
+    if (typeof localStorage === 'undefined') return DEFAULT_ASSETS;
     const raw = localStorage.getItem(KEYS.ASSETS);
     const parsed: Asset[] = raw ? JSON.parse(raw) : DEFAULT_ASSETS;
-    return deduplicateAssets(parsed);
+    const deduplicated = deduplicateAssets(parsed);
+    const { assets: fixed, fixedCount } = fixMismatchedCategories(deduplicated);
+    if (fixedCount > 0) {
+      localStorage.setItem(KEYS.ASSETS, JSON.stringify(fixed));
+      this.cloudSyncHandler?.('bulkSaveAssets', { assets: fixed, replace: false });
+    }
+    return fixed;
   }
 
   public saveAsset(asset: Asset): void {

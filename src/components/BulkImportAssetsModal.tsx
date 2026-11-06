@@ -12,7 +12,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Language, translations } from '../i18n/translations';
-import { deduplicateAssets, storage } from '../services/storage';
+import { deduplicateAssets, detectAssetCategory, storage } from '../services/storage';
 import { Area, Asset, AssetCategory, UsabilityStatus, User } from '../types';
 
 interface BulkImportAssetsModalProps {
@@ -85,12 +85,106 @@ function parseDelimitedText(text: string): string[][] {
   return rows;
 }
 
-// Find area ID by Location ID or Location Name
-function findAreaId(areas: Area[], locationNameOrCode: string, locationIdOrCode?: string): string {
+// Find area ID by Location ID, Location Name, or Asset ID prefix
+function findAreaId(
+  areas: Area[],
+  locationNameOrCode: string,
+  locationIdOrCode?: string,
+  assetId?: string
+): string {
   const rawLoc = (locationNameOrCode || '').toLowerCase().trim();
   const rawId = (locationIdOrCode || '').toLowerCase().trim();
+  const rawAsset = (assetId || '').toUpperCase().trim();
 
-  // 1. Direct match on Area ID / Code
+  // 1. Direct match on Location Name or Location ID (highest priority & user intent)
+  // Kadamtali Vocational Center (direct or keyword)
+  if (
+    rawLoc.includes('vocational') ||
+    rawLoc.includes('voc.t.center') ||
+    rawLoc.includes('ভোকেশনাল') ||
+    rawId.includes('kvc') ||
+    rawLoc.includes('kvc')
+  ) {
+    return 'area-kvc';
+  }
+
+  // Kadamtali Shelter
+  if (
+    rawLoc.includes('kadamtali') ||
+    rawLoc.includes('কদমতলী') ||
+    rawLoc.includes('kdt') ||
+    rawId.includes('kdt')
+  ) {
+    return 'area-kdt';
+  }
+
+  // Kamalapur (Shelter vs SUS)
+  if (
+    rawLoc.includes('kamalapur') ||
+    rawLoc.includes('kamlapur') ||
+    rawLoc.includes('কমলাপুর') ||
+    rawId.includes('kms') ||
+    rawId.includes('kmp')
+  ) {
+    if (
+      rawLoc.includes('shelter') ||
+      rawLoc.includes('শেল্টার') ||
+      rawLoc.includes('kms') ||
+      rawId.includes('kms')
+    ) {
+      return 'area-kms';
+    }
+    return 'area-kmp';
+  }
+
+  // Peace Home
+  if (
+    rawLoc.includes('peace home') ||
+    rawLoc.includes('peace') ||
+    rawLoc.includes('konabari') ||
+    rawLoc.includes('gazipur') ||
+    rawLoc.includes('পিস হোম') ||
+    rawLoc.includes('pch') ||
+    rawId.includes('pch')
+  ) {
+    return 'area-pch';
+  }
+
+  // Head Office (ensure word boundary for 'ho' so 'home' is not matched)
+  if (
+    rawLoc.includes('head office') ||
+    rawLoc.includes('প্রধান কার্যালয়') ||
+    rawLoc.includes('হেড অফিস') ||
+    /\bho\b/i.test(rawLoc) ||
+    rawId.includes('leedo000') ||
+    /\bho\b/i.test(rawId)
+  ) {
+    return 'area-ho';
+  }
+
+  if (rawLoc.includes('inclusive') || rawLoc.includes('school') || rawLoc.includes('ইনক্লুসিভ') || rawId.includes('ins')) {
+    return 'area-ins';
+  }
+  if (rawLoc.includes('mirpur') || rawLoc.includes('মিরপুর') || rawId.includes('mir')) {
+    return 'area-mir';
+  }
+  if (rawLoc.includes('shadarghat') || rawLoc.includes('sadarghat') || rawLoc.includes('সদরঘাট') || rawId.includes('sdg')) {
+    return 'area-sdg';
+  }
+  if (rawLoc.includes('shambazar') || rawLoc.includes('shyambazar') || rawLoc.includes('শ্যামবাজার') || rawId.includes('smb')) {
+    return 'area-smb';
+  }
+  if (rawLoc.includes('airport') || rawLoc.includes('বিমানবন্দর') || rawId.includes('apt')) {
+    return 'area-apt';
+  }
+  if (rawLoc.includes('tejgaon') || rawLoc.includes('তেজগাঁও') || rawId.includes('tej')) {
+    return 'area-tej';
+  }
+  if (rawLoc.includes('rayerbazar') || rawLoc.includes('রায়েরবাজার') || rawId.includes('ray')) {
+    return 'area-ray';
+  }
+
+  // 2. Direct match on Area ID / Code / Exact Names
   const match = areas.find((a) => {
     const aId = a.id.toLowerCase();
     const aCode = a.code.toLowerCase();
@@ -99,120 +193,117 @@ function findAreaId(areas: Area[], locationNameOrCode: string, locationIdOrCode?
 
     return (
       (rawId && (aId === rawId || aCode === rawId)) ||
-      (rawLoc && (aId === rawLoc || aCode === rawLoc || aEn.includes(rawLoc) || aBn.includes(rawLoc)))
+      (rawLoc &&
+        (aId === rawLoc ||
+          aCode === rawLoc ||
+          aEn === rawLoc ||
+          aBn === rawLoc ||
+          rawLoc.includes(aEn) ||
+          rawLoc.includes(aBn)))
     );
   });
 
   if (match) return match.id;
 
-  // 2. Keyword check for known LEEDO centers
-  if (rawLoc.includes('head office') || rawLoc.includes('ho') || rawId.includes('leedo000') || rawId.includes('ho')) return 'area-ho';
-  if (rawLoc.includes('mirpur') || rawLoc.includes('mir')) return 'area-mir';
-  if (rawLoc.includes('peace home') || rawLoc.includes('konabari') || rawLoc.includes('pch')) return 'area-pch';
-  if (rawLoc.includes('inclusive') || rawLoc.includes('school') || rawLoc.includes('ins')) return 'area-ins';
-  if (rawLoc.includes('kamalapur shelter') || rawLoc.includes('kms')) return 'area-kms';
-  if (rawLoc.includes('kamalapur') || rawLoc.includes('kmp')) return 'area-kmp';
-  if (rawLoc.includes('airport') || rawLoc.includes('apt')) return 'area-apt';
-  if (rawLoc.includes('tejgaon') || rawLoc.includes('tej')) return 'area-tej';
-  if (rawLoc.includes('rayerbazar') || rawLoc.includes('ray')) return 'area-ray';
-  if (rawLoc.includes('shadarghat') || rawLoc.includes('sadarghat') || rawLoc.includes('sdg')) return 'area-sdg';
-  if (rawLoc.includes('shambazar') || rawLoc.includes('shyambazar') || rawLoc.includes('smb')) return 'area-smb';
-  if (rawLoc.includes('kadamtali voc') || rawLoc.includes('kvc')) return 'area-kvc';
-  if (rawLoc.includes('kadamtali') || rawLoc.includes('kdt')) return 'area-kdt';
+  // 3. Fallback to Asset ID Code Prefix / Pattern
+  // Kadamtali Vocational
+  if (
+    rawAsset.includes('-KVC-') ||
+    rawAsset.includes('/KVC/') ||
+    rawAsset.startsWith('LEEDO-KVC') ||
+    rawAsset.includes('KVC') ||
+    rawAsset.includes('VOC')
+  ) {
+    return 'area-kvc';
+  }
+
+  // Kadamtali Shelter (TSSBKDMS, TSSBKAD, BKDMS, KDMS, BKAD, KDT)
+  if (
+    rawAsset.includes('BKDMS') ||
+    rawAsset.includes('KDMS') ||
+    rawAsset.includes('BKAD') ||
+    rawAsset.includes('TSSBKDMS') ||
+    rawAsset.includes('TSSBKAD') ||
+    rawAsset.includes('-KDT-') ||
+    rawAsset.includes('/KDT/') ||
+    rawAsset.startsWith('LEEDO-KDT') ||
+    rawAsset.startsWith('LEEDO/KDT') ||
+    rawAsset.includes('KDT')
+  ) {
+    return 'area-kdt';
+  }
+
+  // Kamalapur Shelter (KMS / TSSBK / TSSBKP / TSSBKO / TSSBKW)
+  if (
+    rawAsset.includes('TSSBK') ||
+    rawAsset.includes('TSSB') ||
+    rawAsset.includes('-KMS-') ||
+    rawAsset.includes('/KMS/') ||
+    rawAsset.startsWith('LEEDO-KMS') ||
+    rawAsset.includes('KMS')
+  ) {
+    return 'area-kms';
+  }
+
+  // Kamalapur SUS (KMP)
+  if (
+    rawAsset.includes('-KMP-') ||
+    rawAsset.includes('/KMP/') ||
+    rawAsset.startsWith('LEEDO-KMP') ||
+    rawAsset.includes('KMP')
+  ) {
+    return 'area-kmp';
+  }
+
+  // Peace Home
+  if (
+    rawAsset.includes('-PH-') ||
+    rawAsset.includes('/PH/') ||
+    rawAsset.startsWith('LEEDO-PH') ||
+    rawAsset.includes('PCH') ||
+    rawAsset.includes('PEACE')
+  ) {
+    return 'area-pch';
+  }
+
+  // Head Office
+  if (
+    rawAsset.includes('-HO-') ||
+    rawAsset.includes('/HO/') ||
+    rawAsset.startsWith('LEEDO-HO') ||
+    rawAsset.startsWith('LEEDO/HO')
+  ) {
+    return 'area-ho';
+  }
+
+  if (rawAsset.includes('-MIR-') || rawAsset.includes('/MIR/') || rawAsset.includes('MIR')) {
+    return 'area-mir';
+  }
+  if (rawAsset.includes('-INS-') || rawAsset.includes('/INS/') || rawAsset.includes('INS')) {
+    return 'area-ins';
+  }
+  if (rawAsset.includes('-SDG-') || rawAsset.includes('/SDG/') || rawAsset.includes('SDG')) {
+    return 'area-sdg';
+  }
+  if (rawAsset.includes('-SMB-') || rawAsset.includes('/SMB/') || rawAsset.includes('SMB')) {
+    return 'area-smb';
+  }
+  if (rawAsset.includes('-APT-') || rawAsset.includes('/APT/') || rawAsset.includes('APT')) {
+    return 'area-apt';
+  }
+  if (rawAsset.includes('-TEJ-') || rawAsset.includes('/TEJ/') || rawAsset.includes('TEJ')) {
+    return 'area-tej';
+  }
+  if (rawAsset.includes('-RAY-') || rawAsset.includes('/RAY/') || rawAsset.includes('RAY')) {
+    return 'area-ray';
+  }
 
   return 'area-ho';
 }
 
-// Normalize Category from ASSET GROUP and Item Name
+// Normalize Category using centralized intelligent detection
 function normalizeCategory(groupStr: string, itemStr = ''): AssetCategory {
-  const combined = `${groupStr} ${itemStr}`.toLowerCase();
-
-  if (
-    combined.includes('pc') ||
-    combined.includes('computer') ||
-    combined.includes('laptop') ||
-    combined.includes('printer') ||
-    combined.includes('scanner') ||
-    combined.includes('it') ||
-    combined.includes('electronics') ||
-    combined.includes('ups') ||
-    combined.includes('server') ||
-    combined.includes('network') ||
-    combined.includes('camera') ||
-    combined.includes('office equipment')
-  ) {
-    return 'IT_Electronics';
-  }
-
-  if (
-    combined.includes('table') ||
-    combined.includes('chair') ||
-    combined.includes('desk') ||
-    combined.includes('shelf') ||
-    combined.includes('almirah') ||
-    combined.includes('cabinet') ||
-    combined.includes('bed') ||
-    combined.includes('sofa') ||
-    combined.includes('furniture')
-  ) {
-    return 'Furniture';
-  }
-
-  if (
-    combined.includes('vehicle') ||
-    combined.includes('car') ||
-    combined.includes('micro') ||
-    combined.includes('microbus') ||
-    combined.includes('ambulance') ||
-    combined.includes('bike') ||
-    combined.includes('motorcycle')
-  ) {
-    return 'Vehicle';
-  }
-
-  if (
-    combined.includes('ac') ||
-    combined.includes('air condition') ||
-    combined.includes('fridge') ||
-    combined.includes('refrigerator') ||
-    combined.includes('purifier') ||
-    combined.includes('fan') ||
-    combined.includes('appliance')
-  ) {
-    return 'Appliances';
-  }
-
-  if (
-    combined.includes('cooker') ||
-    combined.includes('gas') ||
-    combined.includes('kitchen') ||
-    combined.includes('pot') ||
-    combined.includes('stove')
-  ) {
-    return 'Kitchenware';
-  }
-
-  if (
-    combined.includes('smart board') ||
-    combined.includes('projector') ||
-    combined.includes('book') ||
-    combined.includes('school') ||
-    combined.includes('educational') ||
-    combined.includes('teaching')
-  ) {
-    return 'Educational';
-  }
-
-  if (
-    combined.includes('medical') ||
-    combined.includes('first aid') ||
-    combined.includes('stethoscope') ||
-    combined.includes('bp machine')
-  ) {
-    return 'Medical';
-  }
-
-  return 'Facility';
+  return detectAssetCategory(itemStr, groupStr);
 }
 
 // Normalize Usability condition from Excel columns (e.g. 'Runing', 'Active', 'Good', 'Repairable')
@@ -255,18 +346,24 @@ function normalizeDate(rawDate: string): string {
     jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
   };
 
-  const myMatch = s.match(/^([a-zA-Z]+)[\s\-\,\/]+(\d{4})$/);
+  const myMatch = s.match(/^([a-zA-Z]+)[\s\-\,\/]+(\d{2,4})$/);
   if (myMatch) {
     const monthKey = myMatch[1].toLowerCase().slice(0, 3);
-    const year = myMatch[2];
+    let year = myMatch[2];
+    if (year.length === 2) {
+      year = parseInt(year, 10) >= 50 ? `19${year}` : `20${year}`;
+    }
     const monthNum = monthNames[monthKey] || '01';
     return `${year}-${monthNum}-01`;
   }
 
-  // Year-Month like 2025-Nov
-  const ymMatch = s.match(/^(\d{4})[\s\-\,\/]+([a-zA-Z]+)$/);
+  // Year-Month like 2025-Nov or 25-Nov
+  const ymMatch = s.match(/^(\d{2,4})[\s\-\,\/]+([a-zA-Z]+)$/);
   if (ymMatch) {
-    const year = ymMatch[1];
+    let year = ymMatch[1];
+    if (year.length === 2) {
+      year = parseInt(year, 10) >= 50 ? `19${year}` : `20${year}`;
+    }
     const monthKey = ymMatch[2].toLowerCase().slice(0, 3);
     const monthNum = monthNames[monthKey] || '01';
     return `${year}-${monthNum}-01`;
@@ -346,12 +443,23 @@ export const BulkImportAssetsModal: React.FC<BulkImportAssetsModalProps> = ({
         if (c.includes('asset id')) colMap['assetId'] = idx;
         else if (c.includes('item name') || c === 'item') colMap['itemName'] = idx;
         else if (c.includes('item desc') || c.includes('description')) colMap['itemDesc'] = idx;
-        else if (c.includes('location name') || (c.includes('location') && !c.includes('id') && !c.includes('present'))) colMap['locationName'] = idx;
-        else if (c.includes('location id')) colMap['locationId'] = idx;
+        else if (c.includes('location id') || c === 'loc id') colMap['locationId'] = idx;
+        else if (
+          (c === 'location name' || c === 'location' || c === 'branch' || c === 'center' ||
+           (c.includes('location') && !c.includes('id') && !c.includes('present') && !c.includes('dept') && !c.includes('using') && !c.includes('room'))) &&
+          colMap['locationName'] === undefined
+        ) {
+          colMap['locationName'] = idx;
+        }
+        else if (c.includes('dept') || c.includes('department') || c.includes('using')) {
+          colMap['dept'] = idx;
+        }
         else if (c.includes('group') || c.includes('category')) colMap['group'] = idx;
         else if (c.includes('acquisition date') || c.includes('purchase date') || (c.includes('date') && !c.includes('dispose'))) colMap['date'] = idx;
-        else if (c.includes('cost') || c.includes('price') || c.includes('value') || c.includes('bdt')) colMap['cost'] = idx;
-        else if (c.includes('condition')) colMap['condition'] = idx;
+        else if (c.includes('acquisition cost') || c.includes('purchase cost') || c === 'cost' || c.includes('cost in bdt')) colMap['cost'] = idx;
+        else if ((c.includes('cost') || c.includes('price') || c.includes('value') || c.includes('bdt')) && colMap['cost'] === undefined) colMap['cost'] = idx;
+        else if (c.includes('present condition')) colMap['condition'] = idx;
+        else if (c.includes('condition') && colMap['condition'] === undefined) colMap['condition'] = idx;
         else if (c.includes('status')) colMap['status'] = idx;
         else if (c.includes('room') || c.includes('present location')) colMap['room'] = idx;
         else if (c.includes('procured') || c.includes('vendor') || c.includes('transferred')) colMap['vendor'] = idx;
@@ -451,7 +559,13 @@ export const BulkImportAssetsModal: React.FC<BulkImportAssetsModalProps> = ({
       }
 
       if (!assetId) {
-        const foundId = row.find((cell) => cell.includes('/') && /[a-zA-Z]/.test(cell) && /\d/.test(cell));
+        const foundId = row.find(
+          (cell) =>
+            (cell.includes('/') || cell.includes('-')) &&
+            /[a-zA-Z]/.test(cell) &&
+            /\d/.test(cell) &&
+            (cell.toUpperCase().includes('LEEDO') || cell.length >= 6)
+        );
         if (foundId) assetId = foundId.trim();
       }
 
@@ -470,7 +584,7 @@ export const BulkImportAssetsModal: React.FC<BulkImportAssetsModalProps> = ({
           ? `${finalItemName} - ${itemDesc}`
           : finalItemName;
 
-      const areaId = findAreaId(areas, locationName, locationId);
+      const areaId = findAreaId(areas, locationName, locationId, assetId);
       const parsedDate = normalizeDate(acqDate);
       const category = normalizeCategory(assetGroup, finalItemName);
       const usabilityStatus = normalizeStatus(conditionText, statusText);
@@ -489,7 +603,16 @@ export const BulkImportAssetsModal: React.FC<BulkImportAssetsModalProps> = ({
         category,
         assignedAreaId: areaId,
         purchaseDate: parsedDate,
-        purchaseValueBDT: costValue || 36000,
+        purchaseValueBDT:
+          costValue > 0
+            ? costValue
+            : category === 'IT_Electronics'
+            ? 36000
+            : category === 'Furniture'
+            ? 8000
+            : category === 'Appliances'
+            ? 3500
+            : 2500,
         initialCondition: initialCond,
         usabilityStatus,
         specificRoom: roomName || 'General Store',
@@ -507,7 +630,20 @@ export const BulkImportAssetsModal: React.FC<BulkImportAssetsModalProps> = ({
           : 'Could not detect any valid asset rows. Please copy rows from Excel and paste again.'
       );
     } else {
-      const cleanResults = deduplicateAssets(results as Asset[]);
+      // Disambiguate duplicate IDs in user's pasted rows so no asset is lost
+      const seenIds = new Map<string, number>();
+      const disambiguatedResults = results.map((item) => {
+        if (!item.id) return item;
+        const count = seenIds.get(item.id) || 0;
+        seenIds.set(item.id, count + 1);
+        if (count === 0) return item;
+        return {
+          ...item,
+          id: `${item.id}-${count + 1}`,
+        };
+      });
+
+      const cleanResults = deduplicateAssets(disambiguatedResults as Asset[]);
       setParsedPreview(cleanResults);
       setErrorMsg('');
     }
@@ -570,7 +706,19 @@ export const BulkImportAssetsModal: React.FC<BulkImportAssetsModalProps> = ({
         };
       });
 
-      const uniqueFinal = deduplicateAssets(finalAssets);
+      const saveSeenIds = new Map<string, number>();
+      const disambiguatedFinal = finalAssets.map((item) => {
+        if (!item.id) return item;
+        const count = saveSeenIds.get(item.id) || 0;
+        saveSeenIds.set(item.id, count + 1);
+        if (count === 0) return item;
+        return {
+          ...item,
+          id: `${item.id}-${count + 1}`,
+        };
+      });
+
+      const uniqueFinal = deduplicateAssets(disambiguatedFinal);
 
       if (replaceExisting) {
         storage.setAllAssets(uniqueFinal, true);
