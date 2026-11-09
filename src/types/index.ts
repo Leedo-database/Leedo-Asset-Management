@@ -62,11 +62,19 @@ export type UsabilityStatus =
 
 export type InitialCondition = 'New' | 'Used';
 
+export interface ItemTypeDefinition {
+  code: string; // e.g. PNT, PC, MON, LAP, FAN, TBL, CHR
+  nameEn: string;
+  nameBn: string;
+  category: AssetCategory;
+}
+
 export interface Asset {
-  id: string; // e.g., LEEDO-HO-2026-0001
+  id: string; // e.g., LEEDO-HO-PNT-2026-001 or LEEDO-HO-2026-0001
   titleEn: string;
   titleBn?: string;
   category: AssetCategory;
+  itemTypeCode?: string; // 3-letter sub-category code e.g. 'PNT', 'PC', 'CHR'
   acquisitionType: 'Purchased' | 'Donation';
   donorOrVendor: string;
   purchaseDate: string; // YYYY-MM-DD

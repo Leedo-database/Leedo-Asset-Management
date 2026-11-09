@@ -4,6 +4,7 @@ import {
   AssetCategory,
   AssetTransfer,
   DisposalRequest,
+  ItemTypeDefinition,
   OrganizationProfile,
   User,
 } from '../types';
@@ -16,6 +17,7 @@ const KEYS = {
   CURRENT_USER: `${STORAGE_PREFIX}current_user`,
   AREAS: `${STORAGE_PREFIX}areas`,
   ASSETS: `${STORAGE_PREFIX}assets`,
+  ITEM_TYPES: `${STORAGE_PREFIX}item_types`,
   TRANSFERS: `${STORAGE_PREFIX}transfers`,
   DISPOSALS: `${STORAGE_PREFIX}disposals`,
   ORG_PROFILE: `${STORAGE_PREFIX}org_profile`,
@@ -181,6 +183,132 @@ export const DEFAULT_AREAS: Area[] = [
     active: true,
   },
 ];
+
+// Pre-seeded Item Types with 2-3 letter Tag Codes (e.g. PNT = Printer, PC = PC, CHR = Chair)
+export const DEFAULT_ITEM_TYPES: ItemTypeDefinition[] = [
+  // IT & Electronics
+  { code: 'PNT', nameEn: 'Printer', nameBn: 'প্রিন্টার', category: 'IT_Electronics' },
+  { code: 'PC', nameEn: 'Desktop PC / Computer', nameBn: 'ডেস্কটপ পিসি / কম্পিউটার', category: 'IT_Electronics' },
+  { code: 'MON', nameEn: 'Monitor', nameBn: 'মনিটর', category: 'IT_Electronics' },
+  { code: 'LAP', nameEn: 'Laptop', nameBn: 'ল্যাপটপ', category: 'IT_Electronics' },
+  { code: 'CAM', nameEn: 'CCTV Camera', nameBn: 'সিসি ক্যামেরা', category: 'IT_Electronics' },
+  { code: 'RTR', nameEn: 'Router & Network', nameBn: 'রাউটার ও নেটওয়ার্ক', category: 'IT_Electronics' },
+  { code: 'TV', nameEn: 'Television (TV)', nameBn: 'টেলিভিশন (টিভি)', category: 'IT_Electronics' },
+  { code: 'BIO', nameEn: 'Biometric Device', nameBn: 'বায়োমেট্রিক ডিভাইস', category: 'IT_Electronics' },
+  { code: 'SCN', nameEn: 'Scanner & Photocopier', nameBn: 'স্ক্যানার ও ফটোকপিয়ার', category: 'IT_Electronics' },
+  { code: 'UPS', nameEn: 'UPS / IPS / Inverter', nameBn: 'ইউপিএস / আইপিএস / ইনভার্টার', category: 'IT_Electronics' },
+  { code: 'MPG', nameEn: 'Multiplug / Power Strip', nameBn: 'মাল্টিপ্লাগ', category: 'IT_Electronics' },
+  { code: 'SND', nameEn: 'Sound System / Speaker', nameBn: 'সাউন্ড সিস্টেম ও স্পিকার', category: 'IT_Electronics' },
+  { code: 'PHN', nameEn: 'Telephone / Intercom', nameBn: 'টেলিফোন ও ইন্টারকম', category: 'IT_Electronics' },
+
+  // Furniture
+  { code: 'TBL', nameEn: 'Table / Office Table', nameBn: 'টেবিল / অফিস টেবিল', category: 'Furniture' },
+  { code: 'CHR', nameEn: 'Chair / Plastic Chair', nameBn: 'চেয়ার / প্লাস্টিক চেয়ার', category: 'Furniture' },
+  { code: 'ALM', nameEn: 'Almari / Steel Almari', nameBn: 'আলমারি / স্টিল আলমারি', category: 'Furniture' },
+  { code: 'CAB', nameEn: 'File Cabinet / Storage', nameBn: 'ফাইল ক্যাবিনেট', category: 'Furniture' },
+  { code: 'SFA', nameEn: 'Sofa / Couch', nameBn: 'সোফা', category: 'Furniture' },
+  { code: 'BED', nameEn: 'Bed / Cot / Mattress', nameBn: 'খাট / বিছানা / তোশক', category: 'Furniture' },
+  { code: 'RCK', nameEn: 'Rack / Shoe Rack / Shelf', nameBn: 'র‍্যাক / জুতার র‍্যাক / তাক', category: 'Furniture' },
+  { code: 'WDR', nameEn: 'Wardrobe / Warddrop', nameBn: 'ওয়ার্ডরোব / ড্রপ', category: 'Furniture' },
+  { code: 'TRK', nameEn: 'Trunk / Storage Box', nameBn: 'ট্রাঙ্ক / স্টোরেজ বক্স', category: 'Furniture' },
+
+  // Appliances
+  { code: 'FAN', nameEn: 'Ceiling Fan / Fan', nameBn: 'সিলিং ফ্যান / ফ্যান', category: 'Appliances' },
+  { code: 'FRZ', nameEn: 'Refrigerator / Freeze', nameBn: 'ফ্রিজ / রেফ্রিজারেটর', category: 'Appliances' },
+  { code: 'WFL', nameEn: 'Water Filter / Purifier', nameBn: 'ওয়াটার ফিল্টার / পিউরিফায়ার', category: 'Appliances' },
+  { code: 'AC', nameEn: 'Air Conditioner (AC)', nameBn: 'এয়ার কন্ডিশনার (এসি)', category: 'Appliances' },
+  { code: 'SWM', nameEn: 'Sewing Machine (Swing M.)', nameBn: 'সেলাই মেশিন (সুইং)', category: 'Appliances' },
+  { code: 'IRN', nameEn: 'Iron Machine', nameBn: 'ইস্ত্রি মেশিন', category: 'Appliances' },
+  { code: 'WTR', nameEn: 'Water Heater / Dispenser', nameBn: 'ওয়াটার হিটার ও ডিসপেনসার', category: 'Appliances' },
+
+  // Educational
+  { code: 'WBD', nameEn: 'White Board / Smart Board', nameBn: 'হোয়াইট বোর্ড / স্মার্ট বোর্ড', category: 'Educational' },
+  { code: 'WBS', nameEn: 'White Board Stand', nameBn: 'বোর্ড স্ট্যান্ড', category: 'Educational' },
+  { code: 'MUS', nameEn: 'Musical Instrument (Harmonium)', nameBn: 'হারমোনিয়াম / বাদ্যযন্ত্র', category: 'Educational' },
+  { code: 'EDU', nameEn: 'Educational Materials / Code', nameBn: 'শিক্ষামূলক উপকরণ', category: 'Educational' },
+
+  // Kitchenware
+  { code: 'GST', nameEn: 'Gas Stove / Burner / Cylinder', nameBn: 'গ্যাস চুলা ও সিলিন্ডার', category: 'Kitchenware' },
+  { code: 'KTC', nameEn: 'Dinner Set / Kitchen Utensils', nameBn: 'ডিনার সেট ও কিচেন আইটেম', category: 'Kitchenware' },
+
+  // Medical
+  { code: 'MED', nameEn: 'First Aid Box / Medical Kit', nameBn: 'ফার্স্ট এইড বক্স / মেডিকেল', category: 'Medical' },
+  { code: 'WCH', nameEn: 'Wheelchair / Patient Stretcher', nameBn: 'হুইলচেয়ার / স্ট্রেচার', category: 'Medical' },
+
+  // Facility
+  { code: 'FIR', nameEn: 'Fire Extinguisher', nameBn: 'অগ্নি নির্বাপক (ফায়ার বাস্টার)', category: 'Facility' },
+  { code: 'LGT', nameEn: 'Light & Electrical Fixtures', nameBn: 'লাইট ও ইলেকট্রিক্যাল', category: 'Facility' },
+  { code: 'SAN', nameEn: 'Sanitation / Mobile Toilet', nameBn: 'মোবাইল টয়লেট ও স্যানিটেশন', category: 'Facility' },
+
+  // Vehicle
+  { code: 'VEH', nameEn: 'Car / Ambulance / Microbus', nameBn: 'গাড়ি / অ্যাম্বুলেন্স', category: 'Vehicle' },
+  { code: 'CYC', nameEn: 'Motorcycle / Bicycle', nameBn: 'মোটরসাইকেল / সাইকেল', category: 'Vehicle' },
+
+  // General fallback
+  { code: 'GEN', nameEn: 'General Asset Item', nameBn: 'সাধারণ সরঞ্জাম', category: 'Facility' },
+];
+
+/**
+ * Intelligent helper to infer a 2-4 letter tag code from asset title or category
+ */
+export function inferItemTypeCode(title = '', category?: AssetCategory): string {
+  const t = title.toLowerCase();
+  if (t.includes('printer') || t.includes('printr') || t.includes('প্রিন্টার')) return 'PNT';
+  if (t.includes('laptop') || t.includes('ল্যাপটপ')) return 'LAP';
+  if (t.includes('monitor') || t.includes('monotor') || t.includes('মনিটর')) return 'MON';
+  if (t.includes('pc') || t.includes('computer') || t.includes('desktop') || t.includes('কম্পিউটার')) return 'PC';
+  if (t.includes('cctv') || t.includes('camera') || t.includes('ক্যামেরা')) return 'CAM';
+  if (t.includes('router') || t.includes('wifi') || t.includes('রাউটার')) return 'RTR';
+  if (t.includes('tv') || t.includes('television') || t.includes('টেলিভিশন')) return 'TV';
+  if (t.includes('bio') || t.includes('fingerprint') || t.includes('বায়োমেট্রিক')) return 'BIO';
+  if (t.includes('scanner') || t.includes('copier') || t.includes('ফটোকপি')) return 'SCN';
+  if (t.includes('ups') || t.includes('ips') || t.includes('inverter') || t.includes('আইপিএস')) return 'UPS';
+  if (t.includes('multiplag') || t.includes('multiplug') || t.includes('মাল্টিপ্লাগ')) return 'MPG';
+
+  if (t.includes('table') || t.includes('desk') || t.includes('টেবিল')) return 'TBL';
+  if (t.includes('chair') || t.includes('চেয়ার')) return 'CHR';
+  if (t.includes('almirah') || t.includes('almari') || t.includes('amari') || t.includes('আলমারি')) return 'ALM';
+  if (t.includes('cabinet') || t.includes('ক্যাবিনেট')) return 'CAB';
+  if (t.includes('sofa') || t.includes('সোফা')) return 'SFA';
+  if (t.includes('bed') || t.includes('cot') || t.includes('mattress') || t.includes('খাট')) return 'BED';
+  if (t.includes('rack') || t.includes('shelf') || t.includes('র‍্যাক')) return 'RCK';
+  if (t.includes('wardrobe') || t.includes('warddrop') || t.includes('ওয়ারড্রব')) return 'WDR';
+  if (t.includes('trank') || t.includes('trunk') || t.includes('ট্রাঙ্ক')) return 'TRK';
+
+  if (t.includes('fan') || t.includes('celling') || t.includes('ceiling') || t.includes('ফ্যান')) return 'FAN';
+  if (t.includes('fridge') || t.includes('freeze') || t.includes('refrigerator') || t.includes('ফ্রিজ')) return 'FRZ';
+  if (t.includes('filter') || t.includes('purifier') || t.includes('ফিল্টার')) return 'WFL';
+  if (t.includes('ac') || t.includes('air condition') || t.includes('এসি')) return 'AC';
+  if (t.includes('sewing') || t.includes('swing machine') || t.includes('সেলাই')) return 'SWM';
+  if (t.includes('iron') || t.includes('ইস্ত্রি')) return 'IRN';
+  if (t.includes('dispenser') || t.includes('geyser') || t.includes('হিটার')) return 'WTR';
+
+  if (t.includes('stand') && t.includes('board')) return 'WBS';
+  if (t.includes('white board') || t.includes('whiteboard') || t.includes('বোর্ড')) return 'WBD';
+  if (t.includes('harmonium') || t.includes('tabla') || t.includes('বাদ্যযন্ত্র')) return 'MUS';
+
+  if (t.includes('stove') || t.includes('gas') || t.includes('cylinder') || t.includes('চুলা')) return 'GST';
+  if (t.includes('dinner') || t.includes('utensil') || t.includes('পাতিল')) return 'KTC';
+
+  if (t.includes('first aid') || t.includes('fast aid') || t.includes('medical') || t.includes('মেডিকেল')) return 'MED';
+  if (t.includes('wheelchair') || t.includes('stretcher') || t.includes('হুইলচেয়ার')) return 'WCH';
+
+  if (t.includes('fire') || t.includes('extinguisher') || t.includes('অগ্নি')) return 'FIR';
+  if (t.includes('light') || t.includes('bulb') || t.includes('লাইট')) return 'LGT';
+  if (t.includes('toilet') || t.includes('sanitation') || t.includes('টয়লেট')) return 'SAN';
+
+  if (t.includes('car') || t.includes('ambulance') || t.includes('microbus') || t.includes('গাড়ি')) return 'VEH';
+  if (t.includes('bike') || t.includes('motorcycle') || t.includes('cycle') || t.includes('সাইকেল')) return 'CYC';
+
+  if (category === 'IT_Electronics') return 'IT';
+  if (category === 'Furniture') return 'FUR';
+  if (category === 'Appliances') return 'APP';
+  if (category === 'Vehicle') return 'VEH';
+  if (category === 'Kitchenware') return 'KTC';
+  if (category === 'Medical') return 'MED';
+  if (category === 'Educational') return 'EDU';
+  return 'GEN';
+}
 
 // Pre-seeded Users matching LEEDO Official Employee Database
 export const DEFAULT_USERS: User[] = [
@@ -1725,12 +1853,69 @@ class StorageService {
     this.cloudSyncHandler?.('clearAllAssets', null);
   }
 
-  public generateAssetId(areaCode: string, year = new Date().getFullYear()): string {
+  public getItemTypes(): ItemTypeDefinition[] {
+    if (typeof localStorage === 'undefined') return DEFAULT_ITEM_TYPES;
+    const raw = localStorage.getItem(KEYS.ITEM_TYPES);
+    if (!raw) return DEFAULT_ITEM_TYPES;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_ITEM_TYPES;
+    } catch {
+      return DEFAULT_ITEM_TYPES;
+    }
+  }
+
+  public saveItemType(itemType: ItemTypeDefinition): void {
+    if (typeof localStorage === 'undefined') return;
+    const types = this.getItemTypes();
+    const cleanCode = itemType.code.toUpperCase().trim();
+    const existingIndex = types.findIndex((t) => t.code.toUpperCase() === cleanCode);
+    const updated = { ...itemType, code: cleanCode };
+    if (existingIndex >= 0) {
+      types[existingIndex] = updated;
+    } else {
+      types.unshift(updated);
+    }
+    localStorage.setItem(KEYS.ITEM_TYPES, JSON.stringify(types));
+    this.notify();
+  }
+
+  public generateAssetId(
+    areaCode: string,
+    itemCodeOrYear: string | number = 'GEN',
+    maybeYear: number = new Date().getFullYear()
+  ): string {
+    let itemCode = 'GEN';
+    let year = maybeYear;
+
+    if (typeof itemCodeOrYear === 'number') {
+      year = itemCodeOrYear;
+      itemCode = 'GEN';
+    } else if (itemCodeOrYear && /^\d{4}$/.test(String(itemCodeOrYear).trim())) {
+      year = parseInt(String(itemCodeOrYear).trim(), 10);
+      itemCode = 'GEN';
+    } else if (typeof itemCodeOrYear === 'string') {
+      itemCode = itemCodeOrYear.trim().toUpperCase() || 'GEN';
+    }
+
+    const cleanArea = (areaCode || 'HO').toUpperCase().trim();
+    const cleanCode = itemCode.toUpperCase();
+    const cleanYear = year || new Date().getFullYear();
+    const prefix = `LEEDO-${cleanArea}-${cleanCode}-${cleanYear}-`;
+
     const assets = this.getAssets();
-    const prefix = `LEEDO-${areaCode}-${year}-`;
-    const matching = assets.filter((a) => a.id.startsWith(prefix));
-    const nextSeq = matching.length + 1;
-    return `${prefix}${String(nextSeq).padStart(4, '0')}`;
+    let maxSeq = 0;
+    for (const a of assets) {
+      if (a.id && a.id.startsWith(prefix)) {
+        const suffix = a.id.slice(prefix.length);
+        const num = parseInt(suffix, 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+    }
+    const nextSeq = maxSeq + 1;
+    return `${prefix}${String(nextSeq).padStart(3, '0')}`;
   }
 
   // --- Transfers ---

@@ -24,6 +24,7 @@ import { LocationsView } from './components/LocationsView';
 import { LoginScreen } from './components/LoginScreen';
 import { Navbar } from './components/Navbar';
 import { OrgSettingsView } from './components/OrgSettingsView';
+import { PrintAssetTagModal } from './components/PrintAssetTagModal';
 import { PrintAuditReportModal } from './components/PrintAuditReportModal';
 import { QuickConditionModal } from './components/QuickConditionModal';
 import { StaffManagementView } from './components/StaffManagementView';
@@ -49,6 +50,7 @@ export default function App() {
   // Modals
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [tagPrintAsset, setTagPrintAsset] = useState<Asset | null>(null);
   const [quickUpdateAsset, setQuickUpdateAsset] = useState<Asset | null>(null);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [disposalRequestAsset, setDisposalRequestAsset] = useState<Asset | null>(null);
@@ -305,6 +307,7 @@ export default function App() {
                 setIsAddAssetOpen(true);
               }}
               onSelectAsset={(asset) => setSelectedAsset(asset)}
+              onPrintTag={(asset) => setTagPrintAsset(asset)}
               onOpenQuickUpdate={(asset) => setQuickUpdateAsset(asset)}
               onOpenDisposalRequest={(asset) => {
                 setDisposalRequestAsset(asset);
@@ -381,6 +384,13 @@ export default function App() {
         </main>
       </div>
 
+      {/* Footer Credit */}
+      <footer className="mt-auto border-t border-slate-200/80 bg-white/60 py-3 px-4 text-center no-print">
+        <p className="text-[11px] font-medium text-slate-400">
+          Developed by <span className="font-semibold text-slate-600">shadowgili</span>
+        </p>
+      </footer>
+
       {/* Modals */}
       <AddAssetModal
         isOpen={isAddAssetOpen}
@@ -388,7 +398,12 @@ export default function App() {
           setIsAddAssetOpen(false);
           setEditingAsset(null);
         }}
-        onSave={(asset) => storage.saveAsset(asset)}
+        onSave={(asset, andPrint) => {
+          storage.saveAsset(asset);
+          if (andPrint) {
+            setTagPrintAsset(asset);
+          }
+        }}
         areas={areas}
         currentUser={currentUser}
         lang={lang}
@@ -402,6 +417,7 @@ export default function App() {
         areas={areas}
         currentUser={currentUser}
         lang={lang}
+        onPrintTag={(a) => setTagPrintAsset(a)}
         onOpenQuickUpdate={(a) => {
           setQuickUpdateAsset(a);
         }}
@@ -412,6 +428,15 @@ export default function App() {
         onOpenTransfer={(a) => {
           setActiveTab('transfers');
         }}
+      />
+
+      {/* QR Code Printable Asset Tag Sticker Modal */}
+      <PrintAssetTagModal
+        asset={tagPrintAsset}
+        isOpen={Boolean(tagPrintAsset)}
+        onClose={() => setTagPrintAsset(null)}
+        lang={lang}
+        areas={areas}
       />
 
       <QuickConditionModal

@@ -30,6 +30,7 @@ interface AssetDetailModalProps {
   onOpenQuickUpdate: (asset: Asset) => void;
   onOpenDisposalRequest: (asset: Asset) => void;
   onOpenTransfer: (asset: Asset) => void;
+  onPrintTag?: (asset: Asset) => void;
 }
 
 export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
@@ -42,6 +43,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   onOpenQuickUpdate,
   onOpenDisposalRequest,
   onOpenTransfer,
+  onPrintTag,
 }) => {
   if (!isOpen || !asset) return null;
 
@@ -262,6 +264,20 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
         {/* Modal Footer with Actions */}
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 no-print">
           <div className="flex items-center space-x-2">
+            {/* Print Sticker Tag */}
+            {onPrintTag && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onPrintTag(asset);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs transition-colors flex items-center space-x-1 cursor-pointer"
+              >
+                <QrCode className="w-3.5 h-3.5 text-red-600" />
+                <span>{lang === 'bn' ? 'ট্যাগ স্টিকার প্রিন্ট (QR)' : 'Print Tag Sticker (QR)'}</span>
+              </button>
+            )}
+
             {/* Quick condition update for field staff */}
             <button
               onClick={() => {

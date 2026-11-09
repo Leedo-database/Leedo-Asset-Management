@@ -176,11 +176,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+          <div className="mt-6 pt-4 border-t border-slate-100 text-center space-y-1">
             <p className="text-[11px] text-slate-400">
               {lang === 'bn'
                 ? 'অননুমোদিত প্রবেশ নিষিদ্ধ • লিডো সম্পদ ট্র্যাকিং ও অডিট সিস্টেম'
                 : 'Authorized Personnel Only • LEEDO Asset Tracking & Audit'}
+            </p>
+            <p className="text-[10px] text-slate-400">
+              Developed by <span className="font-semibold text-slate-500">shadowgili</span>
             </p>
           </div>
         </div>

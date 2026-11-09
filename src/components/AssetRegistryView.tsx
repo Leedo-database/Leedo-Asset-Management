@@ -26,7 +26,7 @@ import {
   X,
 } from 'lucide-react';
 import { Language, translations } from '../i18n/translations';
-import { deduplicateAssets, storage } from '../services/storage';
+import { deduplicateAssets, inferItemTypeCode, storage } from '../services/storage';
 import { Area, Asset, AssetCategory, UsabilityStatus, User } from '../types';
 import { calculateDepreciation, formatBDT } from '../utils/depreciation';
 import { BulkImportAssetsModal } from './BulkImportAssetsModal';
@@ -43,6 +43,7 @@ interface AssetRegistryViewProps {
   onOpenTransfer: (asset: Asset) => void;
   onEditAsset: (asset: Asset) => void;
   onDeleteAsset: (asset: Asset) => void;
+  onPrintTag?: (asset: Asset) => void;
 }
 
 export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
@@ -57,12 +58,14 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
   onOpenTransfer,
   onEditAsset,
   onDeleteAsset,
+  onPrintTag,
 }) => {
   const t = translations[lang];
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedItemType, setSelectedItemType] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedArea, setSelectedArea] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -90,14 +93,28 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
       // Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchTitle = (asset.titleEn || '').toLowerCase().includes(q) ||
+        const matchTitle =
+          (asset.titleEn || '').toLowerCase().includes(q) ||
           (asset.titleBn || '').toLowerCase().includes(q);
         const matchId = (asset.id || '').toLowerCase().includes(q);
+        const matchCategory = (asset.category || '').toLowerCase().includes(q);
+        const code = asset.itemTypeCode || inferItemTypeCode(asset.titleEn, asset.category);
+        const matchCode = code.toLowerCase().includes(q);
         const matchSerial = (asset.serialNumber || '').toLowerCase().includes(q);
         const matchVendor = (asset.donorOrVendor || '').toLowerCase().includes(q);
         const matchRoom = (asset.specificRoom || '').toLowerCase().includes(q);
+        const matchRemarks = (asset.remarks || '').toLowerCase().includes(q);
 
-        if (!matchTitle && !matchId && !matchSerial && !matchVendor && !matchRoom) {
+        if (
+          !matchTitle &&
+          !matchId &&
+          !matchCategory &&
+          !matchCode &&
+          !matchSerial &&
+          !matchVendor &&
+          !matchRoom &&
+          !matchRemarks
+        ) {
           return false;
         }
       }
@@ -105,6 +122,14 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
       // Category
       if (selectedCategory !== 'ALL' && asset.category !== selectedCategory) {
         return false;
+      }
+
+      // Specific Item Tag Code (e.g. PNT, PC, CHR)
+      if (selectedItemType !== 'ALL') {
+        const code = (asset.itemTypeCode || inferItemTypeCode(asset.titleEn, asset.category)).toUpperCase();
+        if (code !== selectedItemType.toUpperCase() && !asset.id.toUpperCase().includes(`-${selectedItemType.toUpperCase()}-`)) {
+          return false;
+        }
       }
 
       // Status
@@ -125,7 +150,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
     });
 
     return deduplicateAssets(matched);
-  }, [scopedAssets, searchQuery, selectedCategory, selectedStatus, selectedArea]);
+  }, [scopedAssets, searchQuery, selectedCategory, selectedItemType, selectedStatus, selectedArea]);
 
   // Export to CSV
   const handleExportCSV = () => {
@@ -299,7 +324,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
         </div>
 
         {/* Dropdown Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 pt-2 border-t border-slate-100 text-xs">
           {/* Category Dropdown */}
           <div>
             <select
@@ -316,6 +341,56 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
               <option value="Appliances">{t.cat_Appliances}</option>
               <option value="Medical">{t.cat_Medical}</option>
               <option value="Facility">{t.cat_Facility}</option>
+            </select>
+          </div>
+
+          {/* Item Tag Code Dropdown (e.g. PNT, PC, CHR) */}
+          <div>
+            <select
+              value={selectedItemType}
+              onChange={(e) => setSelectedItemType(e.target.value)}
+              className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-slate-800 bg-white font-bold outline-none focus:ring-1 focus:ring-red-500 font-mono"
+            >
+              <option value="ALL">{lang === 'bn' ? 'সকল ট্যাগ কোড (All Codes)' : 'All Tag Codes'}</option>
+              <optgroup label="IT & Electronics">
+                <option value="PNT">[PNT] Printer / প্রিন্টার</option>
+                <option value="PC">[PC] Desktop PC / কম্পিউটার</option>
+                <option value="MON">[MON] Monitor / মনিটর</option>
+                <option value="LAP">[LAP] Laptop / ল্যাপটপ</option>
+                <option value="CAM">[CAM] CCTV Camera / ক্যামেরা</option>
+                <option value="RTR">[RTR] Router / রাউটার</option>
+                <option value="TV">[TV] Television / টিভি</option>
+                <option value="BIO">[BIO] Biometric / ফিঙ্গারপ্রিন্ট</option>
+                <option value="SCN">[SCN] Scanner & Copier</option>
+                <option value="UPS">[UPS] UPS / IPS</option>
+                <option value="MPG">[MPG] Multiplug / মাল্টিপ্লাগ</option>
+              </optgroup>
+              <optgroup label="Furniture">
+                <option value="TBL">[TBL] Table / টেবিল</option>
+                <option value="CHR">[CHR] Chair / চেয়ার</option>
+                <option value="ALM">[ALM] Almari / আলমারি</option>
+                <option value="CAB">[CAB] File Cabinet / ক্যাবিনেট</option>
+                <option value="SFA">[SFA] Sofa / সোফা</option>
+                <option value="BED">[BED] Bed & Cot / খাট</option>
+                <option value="RCK">[RCK] Rack & Shelf / র‍্যাক</option>
+                <option value="TRK">[TRK] Trunk / ট্রাঙ্ক</option>
+              </optgroup>
+              <optgroup label="Appliances">
+                <option value="FAN">[FAN] Ceiling Fan / ফ্যান</option>
+                <option value="FRZ">[FRZ] Refrigerator / ফ্রিজ</option>
+                <option value="WFL">[WFL] Water Filter / ফিল্টার</option>
+                <option value="AC">[AC] Air Conditioner / এসি</option>
+                <option value="SWM">[SWM] Sewing Machine / সেলাই</option>
+                <option value="IRN">[IRN] Iron Machine / ইস্ত্রি</option>
+              </optgroup>
+              <optgroup label="Other Categories">
+                <option value="WBD">[WBD] White Board / বোর্ড</option>
+                <option value="GST">[GST] Gas Stove / চুলা</option>
+                <option value="MED">[MED] First Aid / মেডিকেল</option>
+                <option value="FIR">[FIR] Fire Extinguisher</option>
+                <option value="LGT">[LGT] Light / লাইট</option>
+                <option value="VEH">[VEH] Vehicle / গাড়ি</option>
+              </optgroup>
             </select>
           </div>
 
@@ -353,15 +428,16 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
 
           {/* Clear Filters */}
           <div className="flex items-center justify-end">
-            {(searchQuery || selectedCategory !== 'ALL' || selectedStatus !== 'ALL' || selectedArea !== 'ALL') && (
+            {(searchQuery || selectedCategory !== 'ALL' || selectedItemType !== 'ALL' || selectedStatus !== 'ALL' || selectedArea !== 'ALL') && (
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCategory('ALL');
+                  setSelectedItemType('ALL');
                   setSelectedStatus('ALL');
                   setSelectedArea('ALL');
                 }}
-                className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center space-x-1"
+                className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center space-x-1 cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>{t.resetFilters}</span>
@@ -448,9 +524,16 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                     >
                       {/* Asset ID */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
-                        <span className="font-mono font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100">
-                          {asset.id}
-                        </span>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-mono font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100">
+                            {asset.id}
+                          </span>
+                          {asset.itemTypeCode && (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono font-bold text-[10px] border border-slate-200">
+                              {asset.itemTypeCode}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Title & Category */}
@@ -522,6 +605,17 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                         onClick={(e) => e.stopPropagation()} // Prevent row click
                       >
                         <div className="flex items-center justify-end space-x-1">
+                          {/* Print QR Asset Tag Sticker */}
+                          {onPrintTag && (
+                            <button
+                              onClick={() => onPrintTag(asset)}
+                              className="p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              title={lang === 'bn' ? 'কিউআর ট্যাগ স্টিকার প্রিন্ট করুন' : 'Print QR Tag Sticker'}
+                            >
+                              <QrCode className="w-4 h-4 text-red-600" />
+                            </button>
+                          )}
+
                           {/* Quick Location / Condition Update for Field Staff & Incharges */}
                           <button
                             onClick={() => onOpenQuickUpdate(asset)}
