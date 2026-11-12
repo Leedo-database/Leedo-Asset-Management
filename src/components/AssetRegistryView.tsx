@@ -5,6 +5,7 @@ import {
   Boxes,
   Building,
   CheckCircle2,
+  CheckSquare,
   Clock,
   Download,
   Edit,
@@ -14,9 +15,11 @@ import {
   Layers,
   MapPin,
   PlusCircle,
+  Printer,
   QrCode,
   RotateCcw,
   Search,
+  Square,
   Tag,
   Trash2,
   TrendingDown,
@@ -29,6 +32,7 @@ import { Language, translations } from '../i18n/translations';
 import { deduplicateAssets, inferItemTypeCode, storage } from '../services/storage';
 import { Area, Asset, AssetCategory, UsabilityStatus, User } from '../types';
 import { calculateDepreciation, formatBDT } from '../utils/depreciation';
+import { exportAssetsToExcelCSV, exportAssetsToExcelHTML } from '../utils/exportToExcel';
 import { BulkImportAssetsModal } from './BulkImportAssetsModal';
 
 interface AssetRegistryViewProps {
@@ -44,6 +48,7 @@ interface AssetRegistryViewProps {
   onEditAsset: (asset: Asset) => void;
   onDeleteAsset: (asset: Asset) => void;
   onPrintTag?: (asset: Asset) => void;
+  onOpenPrintTagSheet?: (assets: Asset[]) => void;
 }
 
 export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
@@ -59,15 +64,18 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
   onEditAsset,
   onDeleteAsset,
   onPrintTag,
+  onOpenPrintTagSheet,
 }) => {
   const t = translations[lang];
 
-  // Filters State
+  // Filters & Selection State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedItemType, setSelectedItemType] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedArea, setSelectedArea] = useState<string>('ALL');
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set());
+  const [isExcelDropdownOpen, setIsExcelDropdownOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
@@ -152,61 +160,40 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
     return deduplicateAssets(matched);
   }, [scopedAssets, searchQuery, selectedCategory, selectedItemType, selectedStatus, selectedArea]);
 
-  // Export to CSV
-  const handleExportCSV = () => {
-    const headers = [
-      'Asset ID',
-      'Asset Title (En)',
-      'Category',
-      'Acquisition Type',
-      'Donor / Vendor',
-      'Purchase Date',
-      'Purchase Value (BDT)',
-      'Current Book Value (BDT)',
-      'Depreciation %',
-      'Initial Condition',
-      'Usability Status',
-      'Area Code',
-      'Area Name',
-      'Specific Room',
-      'Serial Number',
-      'Remarks',
-    ];
-
-    const rows = filteredAssets.map((a) => {
-      const area = areas.find((ar) => ar.id === a.assignedAreaId);
-      const dep = calculateDepreciation(a.purchaseDate, a.purchaseValueBDT, a.category);
-      return [
-        `"${a.id}"`,
-        `"${a.titleEn}"`,
-        `"${a.category}"`,
-        `"${a.acquisitionType}"`,
-        `"${a.donorOrVendor || ''}"`,
-        `"${a.purchaseDate}"`,
-        a.purchaseValueBDT,
-        dep.currentBookValue,
-        `${dep.depreciationPercent}%`,
-        `"${a.initialCondition}"`,
-        `"${a.usabilityStatus}"`,
-        `"${area?.code || ''}"`,
-        `"${area?.nameEn || ''}"`,
-        `"${a.specificRoom || ''}"`,
-        `"${a.serialNumber || ''}"`,
-        `"${(a.remarks || '').replace(/"/g, '""')}"`,
-      ].join(',');
-    });
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute(
-      'download',
-      `LEEDO_Asset_Registry_${new Date().toISOString().split('T')[0]}.csv`
+  // Export Handlers
+  const handleExportFilteredCSV = () => {
+    setIsExcelDropdownOpen(false);
+    exportAssetsToExcelCSV(
+      filteredAssets,
+      areas,
+      `LEEDO_Asset_Registry_${selectedCategory}`,
+      lang
     );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  };
+
+  const handleExportFullDatabaseCSV = () => {
+    setIsExcelDropdownOpen(false);
+    exportAssetsToExcelCSV(assets, areas, 'LEEDO_FULL_DATABASE_ALL_ASSETS', lang);
+  };
+
+  const handleExportFilteredExcel = () => {
+    setIsExcelDropdownOpen(false);
+    exportAssetsToExcelHTML(
+      filteredAssets,
+      areas,
+      'LEEDO_Asset_Registry_Filtered',
+      'LEEDO Asset Registry - Filtered Export'
+    );
+  };
+
+  const handleExportFullDatabaseExcel = () => {
+    setIsExcelDropdownOpen(false);
+    exportAssetsToExcelHTML(
+      assets,
+      areas,
+      'LEEDO_FULL_DATABASE_ALL_ASSETS',
+      'LEEDO Complete Master Asset Registry (All 13 Centers)'
+    );
   };
 
   const getStatusBadge = (status: UsabilityStatus, transferStatus?: string) => {
@@ -289,7 +276,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
             />
           </div>
 
-          {/* Action Buttons: Add Asset, Bulk Import, CSV Export, Table/Card Toggle */}
+          {/* Action Buttons: Add Asset, Bulk Import, Print Tag Sheet, Excel Export */}
           <div className="flex items-center space-x-2 shrink-0">
             {currentUser.canManageAssets && (
               <>
@@ -303,7 +290,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
 
                 <button
                   onClick={() => setIsBulkImportOpen(true)}
-                  className="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-slate-800 text-white hover:bg-slate-900 shadow-xs transition-colors cursor-pointer"
+                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-slate-800 text-white hover:bg-slate-900 shadow-xs transition-colors cursor-pointer"
                   title="Bulk Import / Upload from Excel"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
@@ -312,14 +299,98 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
               </>
             )}
 
-            <button
-              onClick={handleExportCSV}
-              className="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
-              title="Export as Excel / CSV"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{lang === 'bn' ? 'এক্সেল (Excel / CSV)' : 'Export Excel'}</span>
-            </button>
+            {/* Batch / Selective Asset Tag Sticker Sheet Print */}
+            {onOpenPrintTagSheet && (
+              <button
+                onClick={() => {
+                  const toPrint =
+                    selectedAssetIds.size > 0
+                      ? assets.filter((a) => selectedAssetIds.has(a.id))
+                      : filteredAssets;
+                  onOpenPrintTagSheet(toPrint);
+                }}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 transition-colors shadow-2xs cursor-pointer"
+                title={lang === 'bn' ? 'ট্যাগ স্টিকার শিট প্রিন্ট করুন' : 'Print QR Tag Sticker Sheet'}
+              >
+                <QrCode className="w-4 h-4 text-red-600" />
+                <span>
+                  {selectedAssetIds.size > 0
+                    ? lang === 'bn'
+                      ? `ট্যাগ শিট (${selectedAssetIds.size})`
+                      : `Tag Sheet (${selectedAssetIds.size})`
+                    : lang === 'bn'
+                    ? 'ট্যাগ শিট প্রিন্ট'
+                    : 'Print Tag Sheet'}
+                </span>
+              </button>
+            )}
+
+            {/* Excel Export Dropdown (Filtered vs Full Database) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsExcelDropdownOpen(!isExcelDropdownOpen)}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
+                title="Export as Excel / CSV"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{lang === 'bn' ? 'এক্সেল ▾' : 'Excel ▾'}</span>
+              </button>
+
+              {isExcelDropdownOpen && (
+                <div className="absolute right-0 mt-1 w-64 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1.5 text-xs text-slate-800 animate-in fade-in duration-100">
+                  <div className="px-3 py-1 font-bold text-[10px] uppercase text-slate-400 border-b border-slate-100">
+                    {lang === 'bn' ? 'এক্সেল এক্সপোর্ট অপশন' : 'Excel Export Options'}
+                  </div>
+
+                  <button
+                    onClick={handleExportFilteredExcel}
+                    className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-slate-800 flex items-center space-x-2 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <div className="font-bold">
+                        {lang === 'bn'
+                          ? `বর্তমান ফিল্টার এক্সেল (${filteredAssets.length}টি)`
+                          : `Export Filtered List (${filteredAssets.length})`}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {lang === 'bn' ? 'স্ক্রিনে প্রদর্শিত তালিকা' : 'Currently active filters'}
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={handleExportFullDatabaseExcel}
+                    className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-slate-800 flex items-center space-x-2 border-t border-slate-100 cursor-pointer"
+                  >
+                    <Download className="w-4 h-4 text-red-600 shrink-0" />
+                    <div>
+                      <div className="font-black text-red-700">
+                        {lang === 'bn'
+                          ? `সম্পূর্ণ ডাটাবেজ এক্সেল (${assets.length}টি)`
+                          : `Export Full Database (${assets.length})`}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {lang === 'bn'
+                          ? 'সমস্ত ১৩টি শাখা ও ক্যাটাগরির ১৭২+ সম্পদ'
+                          : 'All centers, all categories full database'}
+                      </div>
+                    </div>
+                  </button>
+
+                  <div className="border-t border-slate-100 pt-1">
+                    <button
+                      onClick={handleExportFullDatabaseCSV}
+                      className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-600 text-[11px] cursor-pointer flex items-center space-x-1.5"
+                    >
+                      <Download className="w-3 h-3 text-slate-400" />
+                      <span>{lang === 'bn' ? 'CSV ফরম্যাট (UTF-8 BOM)' : 'CSV format (with UTF-8)'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -447,16 +518,73 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
         </div>
       </div>
 
+      {/* Multi-Select Floating Action Banner */}
+      {selectedAssetIds.size > 0 && (
+        <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs border border-slate-800 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center space-x-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+            <span className="font-black text-sm">
+              {lang === 'bn'
+                ? `${selectedAssetIds.size}টি সম্পদ নির্বাচিত হয়েছে`
+                : `${selectedAssetIds.size} asset(s) selected`}
+            </span>
+            <span className="text-slate-500">|</span>
+            <button
+              onClick={() => {
+                const next = new Set(assets.map((a) => a.id));
+                setSelectedAssetIds(next);
+              }}
+              className="text-red-400 hover:text-red-300 font-bold underline text-xs cursor-pointer"
+            >
+              {lang === 'bn' ? `পুরো ডাটাবেজ নির্বাচন (${assets.length}টি)` : `Select All in DB (${assets.length})`}
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {onOpenPrintTagSheet && (
+              <button
+                onClick={() => {
+                  const toPrint = assets.filter((a) => selectedAssetIds.has(a.id));
+                  onOpenPrintTagSheet(toPrint);
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors flex items-center space-x-1.5 shadow-md cursor-pointer"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>
+                  {lang === 'bn'
+                    ? `🖨️ নির্বাচিত ট্যাগ শিট প্রিন্ট (${selectedAssetIds.size}টি)`
+                    : `Print Tag Sheet (${selectedAssetIds.size})`}
+                </span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setSelectedAssetIds(new Set())}
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl font-bold transition-colors cursor-pointer"
+            >
+              {lang === 'bn' ? 'নির্বাচন বাতিল' : 'Clear'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Asset Table / List */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-700">
-            {lang === 'bn'
-              ? `সম্পদ প্রদর্শিত হচ্ছে: ${filteredAssets.length} টি`
-              : `Showing ${filteredAssets.length} asset${filteredAssets.length !== 1 ? 's' : ''}`}
-          </span>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-bold text-slate-700">
+              {lang === 'bn'
+                ? `সম্পদ প্রদর্শিত হচ্ছে: ${filteredAssets.length} টি`
+                : `Showing ${filteredAssets.length} asset${filteredAssets.length !== 1 ? 's' : ''}`}
+            </span>
+            {selectedAssetIds.size > 0 && (
+              <span className="text-[10px] bg-red-50 text-red-600 font-bold px-2 py-0.5 rounded-full border border-red-200">
+                {selectedAssetIds.size} {lang === 'bn' ? 'টি সিলেক্টেড' : 'selected'}
+              </span>
+            )}
+          </div>
           <div className="text-xs text-slate-400">
-            {lang === 'bn' ? 'ক্লিক করে সম্পূর্ণ ডিটেইলস ও অবচয় দেখুন' : 'Click any row for lifecycle card'}
+            {lang === 'bn' ? 'চেকবক্সে টিক দিয়ে ট্যাগ প্রিন্ট করুন বা লাইফসাইকেল কার্ড দেখতে ক্লিক করুন' : 'Select checkboxes to print tags or click row for details'}
           </div>
         </div>
 
@@ -501,6 +629,23 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
             <table className="min-w-full divide-y divide-slate-100 text-xs">
               <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
+                  <th className="px-3 py-3 text-center w-10" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={filteredAssets.length > 0 && filteredAssets.every((a) => selectedAssetIds.has(a.id))}
+                      onChange={(e) => {
+                        const next = new Set(selectedAssetIds);
+                        if (e.target.checked) {
+                          filteredAssets.forEach((a) => next.add(a.id));
+                        } else {
+                          filteredAssets.forEach((a) => next.delete(a.id));
+                        }
+                        setSelectedAssetIds(next);
+                      }}
+                      className="rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer w-4 h-4"
+                      title={lang === 'bn' ? 'সকল ফিল্টারকৃত সম্পদ নির্বাচন করুন' : 'Select all filtered assets'}
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left">{t.assetId}</th>
                   <th className="px-4 py-3 text-left">{t.assetTitle}</th>
                   <th className="px-4 py-3 text-left">{t.assignedArea}</th>
@@ -519,9 +664,29 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                   return (
                     <tr
                       key={`${asset.id}_${index}`}
-                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                      className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${
+                        selectedAssetIds.has(asset.id) ? 'bg-red-50/40' : ''
+                      }`}
                       onClick={() => onSelectAsset(asset)}
                     >
+                      {/* Checkbox */}
+                      <td className="px-3 py-3.5 text-center w-10" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedAssetIds.has(asset.id)}
+                          onChange={(e) => {
+                            const next = new Set(selectedAssetIds);
+                            if (e.target.checked) {
+                              next.add(asset.id);
+                            } else {
+                              next.delete(asset.id);
+                            }
+                            setSelectedAssetIds(next);
+                          }}
+                          className="rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer w-4 h-4"
+                        />
+                      </td>
+
                       {/* Asset ID */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex items-center space-x-1.5">

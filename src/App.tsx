@@ -26,6 +26,7 @@ import { Navbar } from './components/Navbar';
 import { OrgSettingsView } from './components/OrgSettingsView';
 import { PrintAssetTagModal } from './components/PrintAssetTagModal';
 import { PrintAuditReportModal } from './components/PrintAuditReportModal';
+import { PrintTagSheetModal } from './components/PrintTagSheetModal';
 import { QuickConditionModal } from './components/QuickConditionModal';
 import { StaffManagementView } from './components/StaffManagementView';
 import { TransfersView } from './components/TransfersView';
@@ -51,6 +52,8 @@ export default function App() {
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [tagPrintAsset, setTagPrintAsset] = useState<Asset | null>(null);
+  const [isTagSheetModalOpen, setIsTagSheetModalOpen] = useState(false);
+  const [tagSheetAssets, setTagSheetAssets] = useState<Asset[]>([]);
   const [quickUpdateAsset, setQuickUpdateAsset] = useState<Asset | null>(null);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [disposalRequestAsset, setDisposalRequestAsset] = useState<Asset | null>(null);
@@ -308,6 +311,10 @@ export default function App() {
               }}
               onSelectAsset={(asset) => setSelectedAsset(asset)}
               onPrintTag={(asset) => setTagPrintAsset(asset)}
+              onOpenPrintTagSheet={(toPrint) => {
+                setTagSheetAssets(toPrint);
+                setIsTagSheetModalOpen(true);
+              }}
               onOpenQuickUpdate={(asset) => setQuickUpdateAsset(asset)}
               onOpenDisposalRequest={(asset) => {
                 setDisposalRequestAsset(asset);
@@ -430,13 +437,23 @@ export default function App() {
         }}
       />
 
-      {/* QR Code Printable Asset Tag Sticker Modal */}
+      {/* QR Code Printable Asset Tag Sticker Modal (Single Asset) */}
       <PrintAssetTagModal
         asset={tagPrintAsset}
         isOpen={Boolean(tagPrintAsset)}
         onClose={() => setTagPrintAsset(null)}
         lang={lang}
         areas={areas}
+      />
+
+      {/* QR Code Printable Asset Tag Sticker Sheet Modal (Multi-Page / Batch Selection) */}
+      <PrintTagSheetModal
+        isOpen={isTagSheetModalOpen}
+        onClose={() => setIsTagSheetModalOpen(false)}
+        selectedAssets={tagSheetAssets}
+        allAssets={assets}
+        areas={areas}
+        lang={lang}
       />
 
       <QuickConditionModal
