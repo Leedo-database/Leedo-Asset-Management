@@ -304,14 +304,14 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               </button>
             )}
 
-            {/* Transfer Asset */}
-            {currentUser.canManageAssets && asset.usabilityStatus !== 'Disposed' && asset.transferStatus !== 'in_transit' && (
+            {/* Transfer Asset (Available to both Editors & Field/Center Staff) */}
+            {asset.usabilityStatus !== 'Disposed' && asset.transferStatus !== 'in_transit' && (
               <button
                 onClick={() => {
                   onClose();
                   onOpenTransfer(asset);
                 }}
-                className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 font-bold text-xs transition-colors flex items-center space-x-1"
+                className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 font-bold text-xs transition-colors flex items-center space-x-1 cursor-pointer"
               >
                 <Truck className="w-3.5 h-3.5 text-blue-600" />
                 <span>{t.initiateTransfer}</span>

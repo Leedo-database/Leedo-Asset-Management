@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import {
   Check,
@@ -82,6 +83,17 @@ export const PrintAssetTagModal: React.FC<PrintAssetTagModalProps> = ({
       });
   }, [asset, assignedArea]);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('has-print-portal');
+    } else {
+      document.body.classList.remove('has-print-portal');
+    }
+    return () => {
+      document.body.classList.remove('has-print-portal');
+    };
+  }, [isOpen]);
+
   if (!isOpen || !asset) return null;
 
   const handlePrint = () => {
@@ -104,42 +116,134 @@ export const PrintAssetTagModal: React.FC<PrintAssetTagModalProps> = ({
     link.click();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      {/* Print Specific Stylesheet: Isolated to print only the sticker view */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          #printable-asset-tag-area,
-          #printable-asset-tag-area * {
-            visibility: visible !important;
-          }
-          #printable-asset-tag-area {
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 10px !important;
-            background: white !important;
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 12px !important;
-            justify-content: flex-start !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-          @page {
-            margin: 6mm;
-            size: auto;
-          }
-        }
-      `}</style>
+  const renderSingleSticker = (idx: number) => (
+    <div
+      key={idx}
+      className={`bg-white rounded-lg border-2 border-slate-800 shadow-sm flex flex-col justify-between overflow-hidden relative print:border-black print:shadow-none ${
+        stickerSize === 'compact'
+          ? 'w-[320px] p-2.5 text-[10px]'
+          : stickerSize === 'standard'
+          ? 'w-[380px] p-3 text-[11px]'
+          : 'w-[420px] p-4 text-xs'
+      }`}
+      style={{
+        boxSizing: 'border-box',
+        pageBreakInside: 'avoid',
+        breakInside: 'avoid',
+      }}
+    >
+      {/* Top LEEDO Header Strip */}
+      <div className="flex items-center justify-between pb-1.5 border-b border-slate-300">
+        <div className="flex items-center space-x-1.5">
+          <img
+            src={logoUrl}
+            alt="LEEDO"
+            className="h-5 w-auto object-contain shrink-0"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                '/assets/aistudio/Logo-of-LEEDO-Short-01-746x1024_a345b8a2.png';
+            }}
+          />
+          <div className="leading-tight">
+            <span className="font-black text-slate-900 tracking-wider text-[11px]">
+              LEEDO
+            </span>
+            <span className="ml-1 text-[9px] font-semibold text-slate-600">
+              ASSET TAG
+            </span>
+          </div>
+        </div>
+        <span className="text-[8px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+          {assignedArea?.code || 'HO'} • HQ AUDIT
+        </span>
+      </div>
 
-      <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 my-6 flex flex-col max-h-[92vh]">
+      {/* Main Body: QR Code on Left, Asset ID & Info on Right */}
+      <div className="flex items-center space-x-2.5 py-2">
+        <div className="shrink-0 bg-white p-0.5 border border-slate-200 rounded">
+          {qrDataUrl ? (
+            <img
+              src={qrDataUrl}
+              alt={`QR Code for ${asset.id}`}
+              className={`${
+                stickerSize === 'compact'
+                  ? 'w-16 h-16'
+                  : stickerSize === 'standard'
+                  ? 'w-20 h-20'
+                  : 'w-24 h-24'
+              } object-contain`}
+            />
+          ) : (
+            <div className="w-16 h-16 bg-slate-100 animate-pulse rounded" />
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0 space-y-0.5 leading-tight">
+          <div className="font-mono font-black text-slate-950 tracking-tight text-xs sm:text-[13px] border-b border-slate-200 pb-0.5">
+            {asset.id}
+          </div>
+
+          <div className="font-bold text-slate-900 truncate text-[11px]">
+            {asset.titleEn}
+          </div>
+
+          <div className="text-[9px] text-slate-600 flex items-center space-x-1">
+            <span className="font-semibold text-red-600">
+              [{asset.itemTypeCode || 'TAG'}]
+            </span>
+            <span className="truncate">{asset.category.replace('_', ' & ')}</span>
+          </div>
+
+          <div className="text-[9px] text-slate-700 truncate">
+            <span className="font-bold">Loc:</span> {areaName}
+            {asset.specificRoom ? ` (${asset.specificRoom})` : ''}
+          </div>
+
+          <div className="text-[8px] text-slate-400 font-mono">
+            Acq: {asset.purchaseDate || 'N/A'}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Property Notice Strip */}
+      <div className="pt-1 border-t border-slate-200 flex items-center justify-between text-[8px] text-slate-500 font-semibold tracking-tight uppercase">
+        <span>Property of LEEDO • Do Not Remove</span>
+        <span className="font-mono">Audit Verified</span>
+      </div>
+    </div>
+  );
+
+  const printPortal =
+    typeof document !== 'undefined'
+      ? createPortal(
+          <div className="leedo-print-portal">
+            <style>{`
+              @media print {
+                @page {
+                  margin: 6mm;
+                  size: auto;
+                }
+                .single-tag-portal-grid {
+                  display: flex !important;
+                  flex-wrap: wrap !important;
+                  gap: 12px !important;
+                  justify-content: flex-start !important;
+                }
+              }
+            `}</style>
+            <div className="single-tag-portal-grid">
+              {Array.from({ length: copies }).map((_, idx) => renderSingleSticker(idx))}
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <>
+      {printPortal}
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 no-print">
+        <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 my-6 flex flex-col max-h-[92vh]">
         {/* Modal Header */}
         <div className="bg-slate-900 px-5 py-4 text-white flex items-center justify-between no-print shrink-0">
           <div className="flex items-center space-x-2.5">
@@ -401,6 +505,7 @@ export const PrintAssetTagModal: React.FC<PrintAssetTagModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };

@@ -148,15 +148,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           )}
 
-          {currentUser.canManageAssets && (
-            <button
-              onClick={onOpenInitiateTransfer}
-              className="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-slate-800 text-white hover:bg-slate-900 shadow-xs transition-colors"
-            >
-              <Truck className="w-4 h-4" />
-              <span>{t.initiateTransfer}</span>
-            </button>
-          )}
+          <button
+            onClick={onOpenInitiateTransfer}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-slate-800 text-white hover:bg-slate-900 shadow-xs transition-colors cursor-pointer"
+          >
+            <Truck className="w-4 h-4" />
+            <span>{t.initiateTransfer}</span>
+          </button>
 
           <button
             onClick={onOpenRequestDisposal}

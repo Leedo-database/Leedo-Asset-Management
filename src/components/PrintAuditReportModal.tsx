@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertOctagon,
   Building2,
@@ -250,64 +251,21 @@ export const PrintAuditReportModal: React.FC<PrintAuditReportModalProps> = ({
       : 'OFFICIAL ASSET AUDIT & INVENTORY REGISTER';
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('has-print-portal');
+    } else {
+      document.body.classList.remove('has-print-portal');
+    }
+    return () => {
+      document.body.classList.remove('has-print-portal');
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
-      {/* Print isolation stylesheet: ensures multi-page printing is pristine, no overflow cutoff */}
-      <style>{`
-        @media print {
-          @page {
-            size: A4 landscape;
-            margin: 8mm 6mm 8mm 6mm;
-          }
-          body * {
-            visibility: hidden !important;
-          }
-          #printable-audit-report,
-          #printable-audit-report * {
-            visibility: visible !important;
-          }
-          #printable-audit-report {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            max-height: none !important;
-            overflow: visible !important;
-            background: white !important;
-            color: black !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-          thead {
-            display: table-header-group !important;
-          }
-          tfoot {
-            display: table-footer-group !important;
-          }
-          tr {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-          }
-          .category-group-block {
-            break-inside: auto !important;
-            page-break-inside: auto !important;
-            margin-bottom: 16px !important;
-          }
-          .audit-signatures-block {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-            margin-top: 24px !important;
-          }
-        }
-      `}</style>
-
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 no-print">
       <div className="bg-white rounded-2xl max-w-6xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 my-3 sm:my-6 flex flex-col max-h-[94vh]">
         {/* Top Interactive Configuration Bar (Hidden in Print via no-print) */}
         <div className="bg-slate-900 px-4 sm:px-6 py-3.5 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 no-print border-b border-slate-800 shrink-0">
@@ -577,7 +535,7 @@ export const PrintAuditReportModal: React.FC<PrintAuditReportModalProps> = ({
         {/* Printable Sheet Viewport */}
         <div
           id="printable-audit-report"
-          className="p-6 sm:p-8 space-y-6 text-slate-800 font-sans print-page overflow-y-auto flex-1 bg-white"
+          className="p-6 sm:p-8 space-y-6 text-slate-800 font-sans overflow-y-auto flex-1 bg-white"
         >
           {/* Formal Official LEEDO Letterhead */}
           <div className="border-b-2 border-red-600 pb-4 flex items-start justify-between">
@@ -1221,6 +1179,245 @@ export const PrintAuditReportModal: React.FC<PrintAuditReportModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Portal copy directly under document.body for clean multi-page landscape printing */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <div className="leedo-print-portal space-y-5 text-slate-800 font-sans bg-white p-2">
+            <style>{`
+              @media print {
+                @page {
+                  size: A4 landscape;
+                  margin: 8mm 6mm 8mm 6mm;
+                }
+                .category-group-block {
+                  break-inside: auto !important;
+                  page-break-inside: auto !important;
+                  margin-bottom: 14px !important;
+                }
+                .audit-signatures-block {
+                  break-inside: avoid !important;
+                  page-break-inside: avoid !important;
+                  margin-top: 20px !important;
+                }
+              }
+            `}</style>
+            {/* Letterhead */}
+            <div className="border-b-2 border-red-600 pb-3 flex items-start justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="h-14 w-14 p-1 rounded-xl border border-red-200 flex items-center justify-center bg-white shrink-0 overflow-hidden">
+                  <img
+                    src={orgProfile.logoUrl || '/assets/aistudio/Logo-of-LEEDO-Short-01-746x1024_a345b8a2.png'}
+                    alt="LEEDO Logo"
+                    className="h-full w-auto object-contain"
+                  />
+                </div>
+                <div>
+                  <h1 className="text-xl font-black text-slate-950 tracking-tight leading-none">
+                    {orgProfile.nameEn}
+                  </h1>
+                  <p className="text-xs font-bold text-red-600 mt-1">{orgProfile.nameBn}</p>
+                  <p className="text-[10px] text-slate-600 mt-0.5">
+                    {orgProfile.addressEn} • Tel: {orgProfile.phone} • NGO Bureau Reg: {orgProfile.registrationNo}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-[10px] uppercase font-black tracking-wider block border rounded px-2.5 py-1 bg-slate-50 text-slate-900 border-slate-300">
+                  {getReportHeaderTitle()}
+                </span>
+                <p className="text-[10px] text-slate-700 mt-1 font-bold">
+                  {lang === 'bn' ? 'তারিখ: ' : 'Date: '}
+                  {new Date().toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </p>
+                <p className="text-[9px] text-slate-500 font-semibold">
+                  {currentUser.name} ({currentUser.employeeId}) • {getScopeDescription()} • {filteredAssets.length} Items
+                </p>
+              </div>
+            </div>
+
+            {/* Financial Summary Bar */}
+            <div className="grid grid-cols-4 gap-3 text-xs p-3 rounded-lg border border-slate-300 bg-slate-50">
+              <div>
+                <span className="text-[9px] text-slate-500 font-bold uppercase">Original Cost</span>
+                <p className="text-sm font-black text-slate-900">{formatBDT(totalOriginalCost)}</p>
+              </div>
+              <div>
+                <span className="text-[9px] text-red-700 font-bold uppercase">
+                  {reportMode === 'disposed' ? 'Salvage Recovered' : 'Current Book Value'}
+                </span>
+                <p className="text-sm font-black text-red-600">
+                  {reportMode === 'disposed' ? formatBDT(totalSalvageRecovered) : formatBDT(totalCurrentBookValue)}
+                </p>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-500 font-bold uppercase">Total Depreciation</span>
+                <p className="text-sm font-black text-slate-700">-{formatBDT(totalDepreciation)}</p>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-500 font-bold uppercase">Items Breakdown</span>
+                <p className="text-xs font-bold text-slate-900">
+                  {countUsable} Usable, {countRepairable} Repair, {countUnusable} Unusable, {countDisposed} Disposed
+                </p>
+              </div>
+            </div>
+
+            {/* Print Tables */}
+            {reportMode === 'disposed' ? (
+              <table className="min-w-full border border-slate-300 text-[10px]">
+                <thead className="bg-slate-100 font-bold text-slate-800 uppercase">
+                  <tr>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">SL</th>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">Asset ID</th>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">Asset Title & Category</th>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">Former Location</th>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">Acq. Date</th>
+                    <th className="px-2 py-1.5 text-right border border-slate-300">Original Cost</th>
+                    <th className="px-2 py-1.5 text-center border border-slate-300">Disposal Date</th>
+                    <th className="px-2 py-1.5 text-center border border-slate-300">Method</th>
+                    <th className="px-2 py-1.5 text-right border border-slate-300">Salvage Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAssets.map((asset, index) => (
+                    <tr key={`pr_disp_${asset.id}_${index}`}>
+                      <td className="px-2 py-1.5 border border-slate-200 font-mono">{index + 1}</td>
+                      <td className="px-2 py-1.5 border border-slate-200 font-mono font-bold">{asset.id}</td>
+                      <td className="px-2 py-1.5 border border-slate-200">
+                        <div className="font-bold">{asset.titleEn}</div>
+                        <div className="text-[9px] text-slate-500">{getCategoryName(asset.category, lang)}</div>
+                      </td>
+                      <td className="px-2 py-1.5 border border-slate-200">
+                        {getAreaName(asset.assignedAreaId)} ({asset.specificRoom})
+                      </td>
+                      <td className="px-2 py-1.5 border border-slate-200">{asset.purchaseDate}</td>
+                      <td className="px-2 py-1.5 border border-slate-200 text-right">{formatBDT(asset.purchaseValueBDT)}</td>
+                      <td className="px-2 py-1.5 border border-slate-200 text-center font-bold text-red-700">{asset.disposalDate || 'N/A'}</td>
+                      <td className="px-2 py-1.5 border border-slate-200 text-center">{asset.disposalMethod || 'Scrapped'}</td>
+                      <td className="px-2 py-1.5 border border-slate-200 text-right font-bold">{formatBDT(asset.salvageValueBDT || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : groupingMode === 'category' ? (
+              <div className="space-y-4">
+                {groupedByCategory.map((group) => {
+                  let subCost = 0;
+                  let subBook = 0;
+                  group.items.forEach((item) => {
+                    subCost += item.purchaseValueBDT || 0;
+                    subBook += calculateDepreciation(item.purchaseDate, item.purchaseValueBDT, item.category).currentBookValue;
+                  });
+                  return (
+                    <div key={`pr_grp_${group.category}`} className="category-group-block border border-slate-300 rounded-lg overflow-hidden">
+                      <div className="bg-slate-900 text-white px-3 py-1.5 flex items-center justify-between text-[11px] font-bold">
+                        <span>{getCategoryName(group.category, lang)} ({group.items.length} Items)</span>
+                        <span>Cost: {formatBDT(subCost)} • Book Value: {formatBDT(subBook)}</span>
+                      </div>
+                      <table className="min-w-full text-[10px]">
+                        <thead className="bg-slate-100 font-bold text-slate-800 uppercase">
+                          <tr>
+                            <th className="px-2 py-1.5 text-left border-b border-slate-300">SL</th>
+                            <th className="px-2 py-1.5 text-left border-b border-slate-300">Asset ID</th>
+                            <th className="px-2 py-1.5 text-left border-b border-slate-300">Tag</th>
+                            <th className="px-2 py-1.5 text-left border-b border-slate-300">Item Name</th>
+                            <th className="px-2 py-1.5 text-left border-b border-slate-300">Center & Room</th>
+                            <th className="px-2 py-1.5 text-left border-b border-slate-300">Acq. Date</th>
+                            <th className="px-2 py-1.5 text-right border-b border-slate-300">Cost</th>
+                            <th className="px-2 py-1.5 text-right border-b border-slate-300">Book Value</th>
+                            <th className="px-2 py-1.5 text-center border-b border-slate-300">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.items.map((asset, idx) => {
+                            const dep = calculateDepreciation(asset.purchaseDate, asset.purchaseValueBDT, asset.category);
+                            const code = asset.itemTypeCode || inferItemTypeCode(asset.titleEn, asset.category);
+                            return (
+                              <tr key={`pr_${asset.id}_${idx}`} className="border-b border-slate-200">
+                                <td className="px-2 py-1 font-mono text-slate-500">{idx + 1}</td>
+                                <td className="px-2 py-1 font-mono font-bold text-slate-900">{asset.id}</td>
+                                <td className="px-2 py-1 font-mono font-bold text-red-700">{code}</td>
+                                <td className="px-2 py-1 font-semibold">{asset.titleEn}</td>
+                                <td className="px-2 py-1">{getAreaName(asset.assignedAreaId)} ({asset.specificRoom})</td>
+                                <td className="px-2 py-1">{asset.purchaseDate}</td>
+                                <td className="px-2 py-1 text-right">{formatBDT(asset.purchaseValueBDT)}</td>
+                                <td className="px-2 py-1 text-right font-bold text-red-700">{formatBDT(dep.currentBookValue)}</td>
+                                <td className="px-2 py-1 text-center font-semibold">{asset.usabilityStatus}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <table className="min-w-full border border-slate-300 text-[10px]">
+                <thead className="bg-slate-100 font-bold text-slate-800 uppercase">
+                  <tr>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">SL</th>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">Asset ID</th>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">Tag</th>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">Title & Category</th>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">Center & Room</th>
+                    <th className="px-2 py-1.5 text-left border border-slate-300">Acq. Date</th>
+                    <th className="px-2 py-1.5 text-right border border-slate-300">Cost</th>
+                    <th className="px-2 py-1.5 text-right border border-slate-300">Book Value</th>
+                    <th className="px-2 py-1.5 text-center border border-slate-300">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAssets.map((asset, index) => {
+                    const dep = calculateDepreciation(asset.purchaseDate, asset.purchaseValueBDT, asset.category);
+                    const code = asset.itemTypeCode || inferItemTypeCode(asset.titleEn, asset.category);
+                    return (
+                      <tr key={`pr_flat_${asset.id}_${index}`}>
+                        <td className="px-2 py-1 border border-slate-200 font-mono">{index + 1}</td>
+                        <td className="px-2 py-1 border border-slate-200 font-mono font-bold">{asset.id}</td>
+                        <td className="px-2 py-1 border border-slate-200 font-mono font-bold text-red-700">{code}</td>
+                        <td className="px-2 py-1 border border-slate-200">
+                          <span className="font-bold">{asset.titleEn}</span> ({getCategoryName(asset.category, lang)})
+                        </td>
+                        <td className="px-2 py-1 border border-slate-200">
+                          {getAreaName(asset.assignedAreaId)} ({asset.specificRoom})
+                        </td>
+                        <td className="px-2 py-1 border border-slate-200">{asset.purchaseDate}</td>
+                        <td className="px-2 py-1 border border-slate-200 text-right">{formatBDT(asset.purchaseValueBDT)}</td>
+                        <td className="px-2 py-1 border border-slate-200 text-right font-bold text-red-700">{formatBDT(dep.currentBookValue)}</td>
+                        <td className="px-2 py-1 border border-slate-200 text-center font-semibold">{asset.usabilityStatus}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+
+            {/* Signatures */}
+            <div className="audit-signatures-block pt-8 grid grid-cols-3 gap-6 text-center text-xs">
+              <div>
+                <div className="border-t border-slate-600 pt-1.5 font-bold text-slate-900">{currentUser.name}</div>
+                <p className="text-[10px] text-slate-700">{currentUser.designation} (ID: {currentUser.employeeId})</p>
+                <p className="text-[9px] text-slate-500 uppercase font-semibold">Prepared By</p>
+              </div>
+              <div>
+                <div className="border-t border-slate-600 pt-1.5 font-bold text-slate-900">Rone Ahammed & Sazzad Hosen</div>
+                <p className="text-[10px] text-slate-700">Logistics Officer (1009) & Asst. Accountant (1079)</p>
+                <p className="text-[9px] text-slate-500 uppercase font-semibold">Verified By</p>
+              </div>
+              <div>
+                <div className="border-t border-slate-600 pt-1.5 font-bold text-slate-900">Md. Habibur Rahman</div>
+                <p className="text-[10px] text-slate-700">Accountant, Admin & Finance (ID: 1004)</p>
+                <p className="text-[9px] text-slate-500 uppercase font-semibold">Approved By</p>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

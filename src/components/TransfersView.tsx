@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -22,6 +22,8 @@ interface TransfersViewProps {
   areas: Area[];
   lang: Language;
   onSaveTransfer: (transfer: AssetTransfer) => void;
+  onRequestFromAsset?: Asset | null;
+  onClearRequestAsset?: () => void;
 }
 
 export const TransfersView: React.FC<TransfersViewProps> = ({
@@ -31,6 +33,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   areas,
   lang,
   onSaveTransfer,
+  onRequestFromAsset,
+  onClearRequestAsset,
 }) => {
   const t = translations[lang];
 
@@ -51,6 +55,26 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   const [receiveDateTime, setReceiveDateTime] = useState(new Date().toISOString().slice(0, 16));
   const [receiveCondition, setReceiveCondition] = useState<TransferCondition>('Good');
   const [receiveRemarks, setReceiveRemarks] = useState('');
+
+  // Auto-open Initiate Transfer Modal if navigated from a specific Asset row
+  useEffect(() => {
+    if (onRequestFromAsset) {
+      if (
+        onRequestFromAsset.usabilityStatus !== 'Disposed' &&
+        onRequestFromAsset.transferStatus !== 'in_transit'
+      ) {
+        setSelectedAssetId(onRequestFromAsset.id);
+        const fallbackDest =
+          areas.find((a) => a.id !== onRequestFromAsset.assignedAreaId)?.id ||
+          areas[0]?.id ||
+          'area-mir';
+        setDestinationAreaId(fallbackDest);
+        setDispatchDateTime(new Date().toISOString().slice(0, 16));
+        setIsInitiateOpen(true);
+      }
+      onClearRequestAsset?.();
+    }
+  }, [onRequestFromAsset, areas, onClearRequestAsset]);
 
   const isGlobal = currentUser.assignedAreaIds.includes('ALL');
 
@@ -137,20 +161,18 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
           <p className="text-xs text-slate-500 mt-0.5">{t.transfersSubtitle}</p>
         </div>
 
-        {currentUser.canManageAssets && (
-          <button
-            onClick={() => {
-              if (transferrableAssets.length > 0) {
-                setSelectedAssetId(transferrableAssets[0].id);
-              }
-              setIsInitiateOpen(true);
-            }}
-            className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-red-600 text-white hover:bg-red-700 shadow-xs transition-colors shrink-0"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>{t.initiateTransfer}</span>
-          </button>
-        )}
+        <button
+          onClick={() => {
+            if (transferrableAssets.length > 0 && !selectedAssetId) {
+              setSelectedAssetId(transferrableAssets[0].id);
+            }
+            setIsInitiateOpen(true);
+          }}
+          className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-red-600 text-white hover:bg-red-700 shadow-xs transition-colors shrink-0 cursor-pointer"
+        >
+          <PlusCircle className="w-4 h-4" />
+          <span>{t.initiateTransfer}</span>
+        </button>
       </div>
 
       {/* Incoming Transfers Section (Immediate Attention Alert) */}

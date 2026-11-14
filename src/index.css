@@ -10,13 +10,37 @@
   }
 }
 
+.leedo-print-portal {
+  display: none;
+}
+
 @media print {
   body {
     background: white !important;
     color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* When a portal-based print modal is open, completely hide #root so fixed/overflow ancestors never clip or repeat pages */
+  body.has-print-portal #root {
+    display: none !important;
+  }
+
+  .leedo-print-portal {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   .no-print {
     display: none !important;
   }

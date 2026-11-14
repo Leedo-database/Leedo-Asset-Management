@@ -423,7 +423,7 @@ class FirebaseSyncService {
   public async saveUser(user: User): Promise<void> {
     try {
       const ref = doc(db, 'users', user.id);
-      await setDoc(ref, user);
+      await setDoc(ref, sanitizeForFirestore(user));
     } catch (error) {
       console.error('Error saving user to cloud:', error);
     }

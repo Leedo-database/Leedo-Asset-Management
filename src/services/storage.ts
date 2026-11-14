@@ -310,6 +310,9 @@ export function inferItemTypeCode(title = '', category?: AssetCategory): string 
   return 'GEN';
 }
 
+// Exact EIDs authorized to Add / Edit / Bulk Import Assets (Forhad, Kanta, Habib, Rone, Sazzad)
+export const ASSET_EDITOR_EIDS = ['1001', '1002', '1004', '1009', '1079'];
+
 // Pre-seeded Users matching LEEDO Official Employee Database
 export const DEFAULT_USERS: User[] = [
   // --- 14 PERMITTED STAFF WITH ACTIVE LOGIN ACCESS ---
@@ -490,7 +493,7 @@ export const DEFAULT_USERS: User[] = [
     active: true,
     hasLoginPermission: true,
     canApproveDisposal: true,
-    canManageAssets: true,
+    canManageAssets: false,
     canManageStaff: false,
     canManageAreas: false,
     canUpdateOrgInfo: false,
@@ -646,7 +649,7 @@ export const DEFAULT_USERS: User[] = [
     active: true,
     hasLoginPermission: true,
     canApproveDisposal: true,
-    canManageAssets: true,
+    canManageAssets: false,
     canManageStaff: true,
     canManageAreas: true,
     canUpdateOrgInfo: true,
@@ -1615,6 +1618,39 @@ class StorageService {
     if (!localStorage.getItem(KEYS.ORG_PROFILE)) {
       localStorage.setItem(KEYS.ORG_PROFILE, JSON.stringify(DEFAULT_ORG_PROFILE));
     }
+
+    // Non-destructive RBAC v11 sync: Only Forhad (1001), Kanta (1002), Habib (1004), Rone (1009), Sazzad (1079) can edit assets
+    if (localStorage.getItem(`${STORAGE_PREFIX}rbac_v11`) !== 'done') {
+      const rawUsers = localStorage.getItem(KEYS.USERS);
+      if (rawUsers) {
+        try {
+          const parsed: User[] = JSON.parse(rawUsers);
+          const synced = parsed.map((u) => ({
+            ...u,
+            canManageAssets: ASSET_EDITOR_EIDS.includes(u.employeeId),
+          }));
+          localStorage.setItem(KEYS.USERS, JSON.stringify(synced));
+        } catch {
+          localStorage.setItem(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
+        }
+      }
+      const rawCurr = localStorage.getItem(KEYS.CURRENT_USER);
+      if (rawCurr) {
+        try {
+          const curr: User = JSON.parse(rawCurr);
+          localStorage.setItem(
+            KEYS.CURRENT_USER,
+            JSON.stringify({
+              ...curr,
+              canManageAssets: ASSET_EDITOR_EIDS.includes(curr.employeeId),
+            })
+          );
+        } catch {
+          // ignore
+        }
+      }
+      localStorage.setItem(`${STORAGE_PREFIX}rbac_v11`, 'done');
+    }
   }
 
   public subscribe(listener: () => void) {
@@ -1667,7 +1703,29 @@ class StorageService {
   }
 
   public setAllUsersFromCloud(users: User[]): void {
-    localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+    let finalUsers = users;
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(`${STORAGE_PREFIX}rbac_v11_cloud`) !== 'done') {
+      const changedUsers: User[] = [];
+      finalUsers = users.map((u) => {
+        const shouldManage = ASSET_EDITOR_EIDS.includes(u.employeeId);
+        if (u.canManageAssets !== shouldManage) {
+          const updated = { ...u, canManageAssets: shouldManage };
+          changedUsers.push(updated);
+          return updated;
+        }
+        return u;
+      });
+      localStorage.setItem(`${STORAGE_PREFIX}rbac_v11_cloud`, 'done');
+      changedUsers.forEach((u) => this.cloudSyncHandler?.('saveUser', u));
+    }
+    localStorage.setItem(KEYS.USERS, JSON.stringify(finalUsers));
+    const current = this.getCurrentUser();
+    if (current) {
+      const matched = finalUsers.find((u) => u.id === current.id);
+      if (matched) {
+        localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(matched));
+      }
+    }
     this.notify();
   }
 

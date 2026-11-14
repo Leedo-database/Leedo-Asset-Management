@@ -629,7 +629,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
             <table className="min-w-full divide-y divide-slate-100 text-xs">
               <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="px-3 py-3 text-center w-10" onClick={(e) => e.stopPropagation()}>
+                  <th className="px-2.5 py-3 text-center w-9" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={filteredAssets.length > 0 && filteredAssets.every((a) => selectedAssetIds.has(a.id))}
@@ -646,14 +646,14 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                       title={lang === 'bn' ? 'সকল ফিল্টারকৃত সম্পদ নির্বাচন করুন' : 'Select all filtered assets'}
                     />
                   </th>
-                  <th className="px-4 py-3 text-left">{t.assetId}</th>
-                  <th className="px-4 py-3 text-left">{t.assetTitle}</th>
-                  <th className="px-4 py-3 text-left">{t.assignedArea}</th>
-                  <th className="px-4 py-3 text-left">{t.purchaseDate}</th>
-                  <th className="px-4 py-3 text-right">{t.purchaseValue}</th>
-                  <th className="px-4 py-3 text-right">{t.estimatedCurrentValue}</th>
-                  <th className="px-4 py-3 text-center">{t.currentCondition}</th>
-                  <th className="px-4 py-3 text-right">{t.actions}</th>
+                  <th className="px-3 py-3 text-left">{t.assetId}</th>
+                  <th className="px-3 py-3 text-left">{t.assetTitle}</th>
+                  <th className="px-3 py-3 text-left">{t.assignedArea}</th>
+                  <th className="px-3 py-3 text-left">{t.purchaseDate}</th>
+                  <th className="px-3 py-3 text-right">{t.purchaseValue}</th>
+                  <th className="px-3 py-3 text-right">{t.estimatedCurrentValue}</th>
+                  <th className="px-3 py-3 text-center">{t.currentCondition}</th>
+                  <th className="px-3 py-3 text-right sticky right-0 z-10 bg-slate-50 shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.06)]">{t.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white font-medium">
@@ -670,7 +670,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                       onClick={() => onSelectAsset(asset)}
                     >
                       {/* Checkbox */}
-                      <td className="px-3 py-3.5 text-center w-10" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-2.5 py-3 text-center w-9" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selectedAssetIds.has(asset.id)}
@@ -688,13 +688,13 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                       </td>
 
                       {/* Asset ID */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <div className="flex items-center space-x-1.5">
-                          <span className="font-mono font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100">
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-mono font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100 text-[11px]">
                             {asset.id}
                           </span>
                           {asset.itemTypeCode && (
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono font-bold text-[10px] border border-slate-200">
+                            <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-mono font-bold text-[10px] border border-slate-200">
                               {asset.itemTypeCode}
                             </span>
                           )}
@@ -702,11 +702,11 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                       </td>
 
                       {/* Title & Category */}
-                      <td className="px-4 py-3.5">
+                      <td className="px-3 py-3 min-w-[170px]">
                         <div className="font-bold text-slate-900 group-hover:text-red-600 transition-colors">
                           {asset.titleEn}
                         </div>
-                        <div className="text-[11px] text-slate-500 flex items-center space-x-2 mt-0.5">
+                        <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-1.5 mt-0.5">
                           <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-medium">
                             {getCategoryLabel(asset.category)}
                           </span>
@@ -726,18 +726,18 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                       </td>
 
                       {/* Assigned Center & Room */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <div className="font-semibold text-slate-800 flex items-center space-x-1">
-                          <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                          <span>{area ? (lang === 'bn' ? area.nameBn : area.nameEn) : 'Unknown'}</span>
+                      <td className="px-3 py-3 max-w-[155px]">
+                        <div className="font-semibold text-slate-800 flex items-start space-x-1">
+                          <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                          <span className="leading-tight">{area ? (lang === 'bn' ? area.nameBn : area.nameEn) : 'Unknown'}</span>
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5 pl-4">
+                        <div className="text-[11px] text-slate-500 mt-0.5 pl-4 truncate">
                           {asset.specificRoom || 'General Area'}
                         </div>
                       </td>
 
                       {/* Purchase Date & Age */}
-                      <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
+                      <td className="px-3 py-3 whitespace-nowrap text-slate-600">
                         <div>{asset.purchaseDate}</div>
                         <div className="text-[11px] text-slate-400 font-normal">
                           {dep.ageFormatted}
@@ -745,12 +745,12 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                       </td>
 
                       {/* Original Cost */}
-                      <td className="px-4 py-3.5 whitespace-nowrap text-right font-semibold text-slate-700">
+                      <td className="px-3 py-3 whitespace-nowrap text-right font-semibold text-slate-700">
                         {formatBDT(asset.purchaseValueBDT)}
                       </td>
 
                       {/* Current Book Value */}
-                      <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                      <td className="px-3 py-3 whitespace-nowrap text-right">
                         <div className="font-bold text-red-600">
                           {formatBDT(dep.currentBookValue)}
                         </div>
@@ -760,13 +760,17 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                       </td>
 
                       {/* Usability Status */}
-                      <td className="px-4 py-3.5 whitespace-nowrap text-center">
+                      <td className="px-3 py-3 whitespace-nowrap text-center">
                         {getStatusBadge(asset.usabilityStatus, asset.transferStatus)}
                       </td>
 
-                      {/* Action Menu Buttons */}
+                      {/* Action Menu Buttons (Sticky right-0 so always visible!) */}
                       <td
-                        className="px-4 py-3.5 whitespace-nowrap text-right"
+                        className={`px-3 py-3 whitespace-nowrap text-right sticky right-0 z-10 shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.08)] transition-colors ${
+                          selectedAssetIds.has(asset.id)
+                            ? 'bg-red-50 group-hover:bg-red-50'
+                            : 'bg-white group-hover:bg-slate-50'
+                        }`}
                         onClick={(e) => e.stopPropagation()} // Prevent row click
                       >
                         <div className="flex items-center justify-end space-x-1">
@@ -781,49 +785,49 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                             </button>
                           )}
 
-                          {/* Quick Location / Condition Update for Field Staff & Incharges */}
+                          {/* Quick Condition & Room Update (Available to All Staff) */}
                           <button
                             onClick={() => onOpenQuickUpdate(asset)}
-                            className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                             title={t.quickUpdateCondition}
                           >
                             <Wrench className="w-4 h-4" />
                           </button>
 
-                          {/* Request Disposal (Area Incharges & HO) */}
+                          {/* Initiate Transfer (Available to BOTH Editors & Non-Editors) */}
+                          {asset.usabilityStatus !== 'Disposed' && asset.transferStatus !== 'in_transit' && (
+                            <button
+                              onClick={() => onOpenTransfer(asset)}
+                              className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              title={t.initiateTransfer}
+                            >
+                              <Truck className="w-4 h-4 text-blue-600" />
+                            </button>
+                          )}
+
+                          {/* Request Disposal */}
                           {asset.usabilityStatus !== 'Disposed' && (
                             <button
                               onClick={() => onOpenDisposalRequest(asset)}
-                              className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                              className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
                               title={t.requestDisposal}
                             >
                               <AlertOctagon className="w-4 h-4" />
                             </button>
                           )}
 
-                          {/* Initiate Transfer (Asset Managers & HO) */}
-                          {currentUser.canManageAssets && asset.usabilityStatus !== 'Disposed' && asset.transferStatus !== 'in_transit' && (
-                            <button
-                              onClick={() => onOpenTransfer(asset)}
-                              className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                              title={t.initiateTransfer}
-                            >
-                              <Truck className="w-4 h-4" />
-                            </button>
-                          )}
-
-                          {/* Edit Asset details (Asset Managers & HO) */}
+                          {/* Edit Asset details (Strictly Sazzad, Rone, Habib, Kanta, Forhad) */}
                           {currentUser.canManageAssets && (
                             <button
                               onClick={() => onEditAsset(asset)}
-                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 rounded-lg transition-colors cursor-pointer"
                               title={t.editAsset}
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                           )}
 
-                          {/* Delete Asset (HO only) */}
+                          {/* Delete Asset (HR Admin only) */}
                           {currentUser.role === 'hr_admin' && (
                             <button
                               onClick={() => setAssetToDelete(asset)}

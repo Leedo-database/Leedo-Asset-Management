@@ -57,6 +57,7 @@ export default function App() {
   const [quickUpdateAsset, setQuickUpdateAsset] = useState<Asset | null>(null);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [disposalRequestAsset, setDisposalRequestAsset] = useState<Asset | null>(null);
+  const [transferRequestAsset, setTransferRequestAsset] = useState<Asset | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -321,6 +322,7 @@ export default function App() {
                 setActiveTab('disposals');
               }}
               onOpenTransfer={(asset) => {
+                setTransferRequestAsset(asset);
                 setActiveTab('transfers');
               }}
               onEditAsset={(asset) => {
@@ -341,6 +343,8 @@ export default function App() {
               areas={areas}
               lang={lang}
               onSaveTransfer={(tr) => storage.saveTransfer(tr)}
+              onRequestFromAsset={transferRequestAsset}
+              onClearRequestAsset={() => setTransferRequestAsset(null)}
             />
           )}
 
@@ -433,6 +437,7 @@ export default function App() {
           setActiveTab('disposals');
         }}
         onOpenTransfer={(a) => {
+          setTransferRequestAsset(a);
           setActiveTab('transfers');
         }}
       />
