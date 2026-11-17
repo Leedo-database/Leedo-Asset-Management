@@ -76,31 +76,74 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
     }
   }, [isOpen]);
 
-  // Handle Editing vs New Asset initialization
+  // Initialize form fields ONLY when modal opens or target editingAsset changes
   useEffect(() => {
+    if (!isOpen) return;
+
     if (editingAsset) {
       setAssetId(editingAsset.id);
-      setTitleEn(editingAsset.titleEn);
-      setCategory(editingAsset.category);
-      setItemTypeCode(editingAsset.itemTypeCode || inferItemTypeCode(editingAsset.titleEn, editingAsset.category));
-      setAcquisitionType(editingAsset.acquisitionType);
-      setDonorOrVendor(editingAsset.donorOrVendor);
-      setPurchaseDate(editingAsset.purchaseDate);
-      setPurchaseValueBDT(editingAsset.purchaseValueBDT);
-      setInitialCondition(editingAsset.initialCondition);
-      setUsabilityStatus(editingAsset.usabilityStatus);
-      setAssignedAreaId(editingAsset.assignedAreaId);
-      setSpecificRoom(editingAsset.specificRoom);
+      setTitleEn(editingAsset.titleEn || '');
+      setCategory(editingAsset.category || 'IT_Electronics');
+      setItemTypeCode(
+        editingAsset.itemTypeCode ||
+          inferItemTypeCode(editingAsset.titleEn || '', editingAsset.category || 'IT_Electronics')
+      );
+      setAcquisitionType(editingAsset.acquisitionType || 'Purchased');
+      setDonorOrVendor(editingAsset.donorOrVendor || '');
+      const rawDate = (editingAsset.purchaseDate || '').trim();
+      let normalizedDate = new Date().toISOString().split('T')[0];
+      if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+        normalizedDate = rawDate.slice(0, 10);
+      } else {
+        const mmmYy = rawDate.match(/^([A-Za-z]{3})-(\d{2,4})$/);
+        if (mmmYy) {
+          const months: Record<string, string> = {
+            jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+            jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+          };
+          const mo = months[mmmYy[1].toLowerCase()];
+          const yr = mmmYy[2].length === 2 ? `20${mmmYy[2]}` : mmmYy[2];
+          if (mo) normalizedDate = `${yr}-${mo}-01`;
+        }
+      }
+      setPurchaseDate(normalizedDate);
+      setPurchaseValueBDT(Number(editingAsset.purchaseValueBDT) || 0);
+      setInitialCondition(editingAsset.initialCondition || 'New');
+      setUsabilityStatus(editingAsset.usabilityStatus || 'Usable');
+      setAssignedAreaId(editingAsset.assignedAreaId || areas[0]?.id || 'area-ho');
+      setSpecificRoom(editingAsset.specificRoom || '');
       setSerialNumber(editingAsset.serialNumber || '');
       setRemarks(editingAsset.remarks || '');
     } else {
-      // Auto-generate standardized format: LEEDO-{AREA}-{CODE}-{YEAR}-{001}
-      const area = areas.find((a) => a.id === assignedAreaId) || areas[0];
-      const areaCode = area ? area.code : 'HO';
-      const year = new Date(purchaseDate || Date.now()).getFullYear();
-      const generated = storage.generateAssetId(areaCode, itemTypeCode || 'GEN', year);
-      setAssetId(generated);
+      setTitleEn('');
+      setCategory('IT_Electronics');
+      setItemTypeCode('PNT');
+      setAcquisitionType('Purchased');
+      setDonorOrVendor('');
+      setPurchaseDate(new Date().toISOString().split('T')[0]);
+      setPurchaseValueBDT(0);
+      setInitialCondition('New');
+      setUsabilityStatus('Usable');
+      setAssignedAreaId(areas[0]?.id || 'area-ho');
+      setSpecificRoom('');
+      setSerialNumber('');
+      setRemarks('');
     }
+    setIsAddingCustomType(false);
+  }, [editingAsset, isOpen]);
+
+  // Auto-generate standardized format ONLY for brand-new assets: LEEDO-{AREA}-{CODE}-{YEAR}-{001}
+  useEffect(() => {
+    if (!isOpen || editingAsset) return;
+    const area = areas.find((a) => a.id === assignedAreaId) || areas[0];
+    const areaCode = area ? area.code : 'HO';
+    const parsedYear = purchaseDate ? parseInt(purchaseDate.slice(0, 4), 10) : NaN;
+    const year =
+      !isNaN(parsedYear) && parsedYear >= 1990 && parsedYear <= 2100
+        ? parsedYear
+        : new Date().getFullYear();
+    const generated = storage.generateAssetId(areaCode, itemTypeCode || 'GEN', year);
+    setAssetId(generated);
   }, [assignedAreaId, itemTypeCode, purchaseDate, editingAsset, areas, isOpen]);
 
   // When title changes on a new asset, if user hasn't explicitly customized, suggest matching code
@@ -160,25 +203,30 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
     e.preventDefault();
 
     const assetData: Asset = {
-      id: assetId.trim(),
-      titleEn: titleEn.trim(),
+      id: editingAsset ? editingAsset.id : assetId.trim(),
+      titleEn: (titleEn || '').trim(),
+      ...(editingAsset?.titleBn ? { titleBn: editingAsset.titleBn } : {}),
       category,
       itemTypeCode: itemTypeCode || 'GEN',
       acquisitionType,
-      donorOrVendor: donorOrVendor.trim(),
-      purchaseDate,
+      donorOrVendor: (donorOrVendor || '').trim(),
+      purchaseDate: purchaseDate || new Date().toISOString().split('T')[0],
       purchaseValueBDT: Number(purchaseValueBDT) || 0,
-      initialCondition,
+      initialCondition: initialCondition || 'New',
       usabilityStatus,
       assignedAreaId,
-      specificRoom: specificRoom.trim(),
-      serialNumber: serialNumber.trim() || undefined,
-      remarks: remarks.trim() || undefined,
-      createdBy: editingAsset ? editingAsset.createdBy : currentUser.name,
-      createdAt: editingAsset ? editingAsset.createdAt : new Date().toISOString(),
+      specificRoom: (specificRoom || '').trim(),
+      serialNumber: (serialNumber || '').trim() || undefined,
+      remarks: (remarks || '').trim() || undefined,
+      createdBy: editingAsset?.createdBy || currentUser.name,
+      createdAt: editingAsset?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       transferStatus: editingAsset?.transferStatus || 'none',
       currentTransferId: editingAsset?.currentTransferId,
+      ...(editingAsset?.disposalDate ? { disposalDate: editingAsset.disposalDate } : {}),
+      ...(editingAsset?.disposalReason ? { disposalReason: editingAsset.disposalReason } : {}),
+      ...(editingAsset?.disposalMethod ? { disposalMethod: editingAsset.disposalMethod } : {}),
+      ...(editingAsset?.salvageValueBDT !== undefined ? { salvageValueBDT: editingAsset.salvageValueBDT } : {}),
     };
 
     onSave(assetData, andPrint);
@@ -575,8 +623,8 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
                   min="0"
                   step="1"
                   required
-                  value={purchaseValueBDT || ''}
-                  onChange={(e) => setPurchaseValueBDT(Number(e.target.value))}
+                  value={Number.isFinite(purchaseValueBDT) ? purchaseValueBDT : 0}
+                  onChange={(e) => setPurchaseValueBDT(e.target.value === '' ? 0 : Number(e.target.value))}
                   placeholder="36000"
                   className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-red-500"
                 />

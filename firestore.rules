@@ -1,40 +1,438 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // -------------------------------------------------------------------------
+    // 1. Global Safety Net (Default Deny)
+    // -------------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. Shared Hardening Primitives & Guards
+    // -------------------------------------------------------------------------
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Standard document ID guard (prevents 1.5KB ID poisoning & path injection)
+    function isValidDocId(id) {
+      return id is string
+        && id.size() >= 1
+        && id.size() <= 128
+        && id.matches('^[a-zA-Z0-9_.\\-!~*\'()]+$');
+    }
+
+    function isStrLen(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isOptStr(data, field, maxLen) {
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function isOptNum(data, field, minVal, maxVal) {
+      return !(field in data) || data[field] == null || ((data[field] is int || data[field] is float) && data[field] >= minVal && data[field] <= maxVal);
+    }
+
+    function isOptBool(data, field) {
+      return !(field in data) || data[field] == null || data[field] is bool;
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. Entity Validation Blueprints (Anti-Shadow-Field & Type/Size Guards)
+    // -------------------------------------------------------------------------
+
+    function isValidAsset(data) {
+      return data.keys().hasAll([
+          'id', 'titleEn', 'category', 'acquisitionType',
+          'purchaseDate', 'purchaseValueBDT', 'usabilityStatus', 'assignedAreaId'
+        ])
+        && data.keys().hasOnly([
+          'id', 'titleEn', 'titleBn', 'category', 'itemTypeCode',
+          'acquisitionType', 'donorOrVendor', 'purchaseDate', 'purchaseValueBDT',
+          'initialCondition', 'usabilityStatus', 'assignedAreaId', 'specificRoom',
+          'serialNumber', 'remarks', 'createdBy', 'createdAt', 'updatedAt',
+          'transferStatus', 'currentTransferId', 'disposalDate', 'disposalReason',
+          'disposalMethod', 'salvageValueBDT'
+        ])
+        && isStrLen(data.id, 1, 128)
+        && isStrLen(data.titleEn, 1, 256)
+        && isOptStr(data, 'titleBn', 256)
+        && data.category in [
+          'IT_Electronics', 'Furniture', 'Vehicle', 'Kitchenware',
+          'Educational', 'Appliances', 'Medical', 'Facility'
+        ]
+        && isOptStr(data, 'itemTypeCode', 16)
+        && data.acquisitionType in ['Purchased', 'Donation']
+        && isOptStr(data, 'donorOrVendor', 256)
+        && isStrLen(data.purchaseDate, 1, 32)
+        && (data.purchaseValueBDT is int || data.purchaseValueBDT is float)
+        && data.purchaseValueBDT >= 0
+        && data.purchaseValueBDT <= 1000000000
+        && (!('initialCondition' in data) || data.initialCondition == null || data.initialCondition in ['New', 'Used'])
+        && data.usabilityStatus in ['Usable', 'Repairable', 'Unusable', 'Disposed']
+        && isStrLen(data.assignedAreaId, 1, 128)
+        && isOptStr(data, 'specificRoom', 128)
+        && isOptStr(data, 'serialNumber', 128)
+        && isOptStr(data, 'remarks', 1000)
+        && isOptStr(data, 'createdBy', 128)
+        && isOptStr(data, 'createdAt', 64)
+        && isOptStr(data, 'updatedAt', 64)
+        && (!('transferStatus' in data) || data.transferStatus == null || data.transferStatus in ['none', 'in_transit', 'transferred'])
+        && isOptStr(data, 'currentTransferId', 128)
+        && isOptStr(data, 'disposalDate', 32)
+        && isOptStr(data, 'disposalReason', 512)
+        && (!('disposalMethod' in data) || data.disposalMethod == null || data.disposalMethod in ['Scrapped', 'Auction', 'Recycled', 'Donated'])
+        && isOptNum(data, 'salvageValueBDT', 0, 1000000000);
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll([
+          'id', 'employeeId', 'name', 'email', 'role',
+          'assignedAreaIds', 'designation', 'phone', 'isFirstLogin', 'active',
+          'canApproveDisposal', 'canManageAssets', 'canManageStaff',
+          'canManageAreas', 'canUpdateOrgInfo'
+        ])
+        && data.keys().hasOnly([
+          'id', 'employeeId', 'numericId', 'name', 'email', 'password',
+          'role', 'assignedAreaIds', 'designation', 'department',
+          'jobLocationCategory', 'employmentNature', 'gender', 'phone',
+          'isFirstLogin', 'active', 'hasLoginPermission',
+          'canApproveDisposal', 'canManageAssets', 'canManageStaff',
+          'canManageAreas', 'canUpdateOrgInfo', 'avatar'
+        ])
+        && isStrLen(data.id, 1, 128)
+        && isStrLen(data.employeeId, 1, 64)
+        && isOptStr(data, 'numericId', 64)
+        && isStrLen(data.name, 1, 128)
+        && isStrLen(data.email, 1, 128)
+        && isOptStr(data, 'password', 128)
+        && data.role in ['head_office', 'hr_admin', 'asset_manager', 'area_incharge', 'field_staff']
+        && data.assignedAreaIds is list
+        && data.assignedAreaIds.size() >= 1
+        && data.assignedAreaIds.size() <= 30
+        && data.assignedAreaIds[0] is string
+        && isStrLen(data.designation, 1, 128)
+        && isOptStr(data, 'department', 128)
+        && isOptStr(data, 'jobLocationCategory', 128)
+        && (!('employmentNature' in data) || data.employmentNature == null || data.employmentNature in ['Permanent', 'Contractual', 'Part Time'])
+        && (!('gender' in data) || data.gender == null || data.gender in ['Male', 'Female'])
+        && isStrLen(data.phone, 0, 32)
+        && data.isFirstLogin is bool
+        && data.active is bool
+        && isOptBool(data, 'hasLoginPermission')
+        && data.canApproveDisposal is bool
+        && data.canManageAssets is bool
+        && data.canManageStaff is bool
+        && data.canManageAreas is bool
+        && data.canUpdateOrgInfo is bool
+        && isOptStr(data, 'avatar', 512);
+    }
+
+    function isValidArea(data) {
+      return data.keys().hasAll([
+          'id', 'code', 'nameEn', 'nameBn', 'type',
+          'addressEn', 'addressBn', 'contactPerson', 'contactPhone', 'active'
+        ])
+        && data.keys().hasOnly([
+          'id', 'code', 'nameEn', 'nameBn', 'type',
+          'addressEn', 'addressBn', 'contactPerson', 'contactPhone', 'active'
+        ])
+        && isStrLen(data.id, 1, 128)
+        && isStrLen(data.code, 1, 16)
+        && isStrLen(data.nameEn, 1, 128)
+        && isStrLen(data.nameBn, 0, 128)
+        && data.type in ['Shelter', 'SUS', 'School', 'Vocational', 'Head Office', 'Other']
+        && isStrLen(data.addressEn, 0, 256)
+        && isStrLen(data.addressBn, 0, 256)
+        && isStrLen(data.contactPerson, 0, 128)
+        && isStrLen(data.contactPhone, 0, 32)
+        && data.active is bool;
+    }
+
+    function isValidTransfer(data) {
+      return data.keys().hasAll([
+          'id', 'voucherNumber', 'assetId', 'assetTitle',
+          'sourceAreaId', 'destinationAreaId', 'dispatchDateTime',
+          'dispatchCondition', 'dispatchByUserId', 'dispatchByUserName', 'status'
+        ])
+        && data.keys().hasOnly([
+          'id', 'voucherNumber', 'assetId', 'assetTitle',
+          'sourceAreaId', 'destinationAreaId', 'dispatchDateTime',
+          'dispatchCondition', 'dispatchByUserId', 'dispatchByUserName',
+          'dispatchRemarks', 'courierOrDriver', 'status',
+          'receiveDateTime', 'receiveCondition', 'receivedByUserId',
+          'receivedByUserName', 'receiveRemarks'
+        ])
+        && isStrLen(data.id, 1, 128)
+        && isStrLen(data.voucherNumber, 1, 64)
+        && isStrLen(data.assetId, 1, 128)
+        && isStrLen(data.assetTitle, 1, 256)
+        && isStrLen(data.sourceAreaId, 1, 128)
+        && isStrLen(data.destinationAreaId, 1, 128)
+        && isStrLen(data.dispatchDateTime, 1, 64)
+        && data.dispatchCondition in ['Good', 'Damaged', 'Repairable', 'Missing parts']
+        && isStrLen(data.dispatchByUserId, 1, 128)
+        && isStrLen(data.dispatchByUserName, 1, 128)
+        && isOptStr(data, 'dispatchRemarks', 512)
+        && isOptStr(data, 'courierOrDriver', 128)
+        && data.status in ['In-Transit', 'Received']
+        && isOptStr(data, 'receiveDateTime', 64)
+        && (!('receiveCondition' in data) || data.receiveCondition == null || data.receiveCondition in ['Good', 'Damaged', 'Repairable', 'Missing parts'])
+        && isOptStr(data, 'receivedByUserId', 128)
+        && isOptStr(data, 'receivedByUserName', 128)
+        && isOptStr(data, 'receiveRemarks', 512);
+    }
+
+    function isValidDisposal(data) {
+      return data.keys().hasAll([
+          'id', 'assetId', 'assetTitle', 'category', 'assignedAreaId',
+          'purchaseValueBDT', 'currentBookValueBDT',
+          'requestedByUserId', 'requestedByUserName', 'requestDate',
+          'reasonEn', 'damageDetails', 'status'
+        ])
+        && data.keys().hasOnly([
+          'id', 'assetId', 'assetTitle', 'category', 'assignedAreaId',
+          'purchaseValueBDT', 'currentBookValueBDT',
+          'requestedByUserId', 'requestedByUserName', 'requestDate',
+          'reasonEn', 'damageDetails', 'status', 'proposedAction',
+          'reviewedByUserId', 'reviewedByUserName', 'reviewDate', 'reviewComments'
+        ])
+        && isStrLen(data.id, 1, 128)
+        && isStrLen(data.assetId, 1, 128)
+        && isStrLen(data.assetTitle, 1, 256)
+        && data.category in [
+          'IT_Electronics', 'Furniture', 'Vehicle', 'Kitchenware',
+          'Educational', 'Appliances', 'Medical', 'Facility'
+        ]
+        && isStrLen(data.assignedAreaId, 1, 128)
+        && (data.purchaseValueBDT is int || data.purchaseValueBDT is float)
+        && data.purchaseValueBDT >= 0 && data.purchaseValueBDT <= 1000000000
+        && (data.currentBookValueBDT is int || data.currentBookValueBDT is float)
+        && data.currentBookValueBDT >= 0 && data.currentBookValueBDT <= 1000000000
+        && isStrLen(data.requestedByUserId, 1, 128)
+        && isStrLen(data.requestedByUserName, 1, 128)
+        && isStrLen(data.requestDate, 1, 32)
+        && isStrLen(data.reasonEn, 1, 512)
+        && isStrLen(data.damageDetails, 0, 512)
+        && data.status in ['Pending HO Approval', 'Approved', 'Rejected']
+        && (!('proposedAction' in data) || data.proposedAction == null || data.proposedAction in ['Sell as Scrap', 'E-waste Recycling', 'Donation to Destitute', 'Destruction', 'Auction'])
+        && isOptStr(data, 'reviewedByUserId', 128)
+        && isOptStr(data, 'reviewedByUserName', 128)
+        && isOptStr(data, 'reviewDate', 32)
+        && isOptStr(data, 'reviewComments', 512);
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll([
+          'id', 'type', 'titleEn', 'titleBn', 'messageEn', 'messageBn',
+          'createdAt', 'actorUserId', 'actorName', 'recipientUserIds', 'readByUserIds'
+        ])
+        && data.keys().hasOnly([
+          'id', 'type', 'titleEn', 'titleBn', 'messageEn', 'messageBn',
+          'createdAt', 'actorUserId', 'actorName', 'recipientUserIds', 'readByUserIds',
+          'relatedAreaId', 'targetAreaId', 'relatedAssetId',
+          'relatedTransferId', 'relatedDisposalId', 'actionTab'
+        ])
+        && isStrLen(data.id, 1, 128)
+        && data.type in [
+          'transfer_dispatched', 'transfer_received',
+          'disposal_requested', 'disposal_approved', 'disposal_rejected',
+          'asset_created', 'asset_updated', 'asset_bulk_imported'
+        ]
+        && isStrLen(data.titleEn, 1, 256)
+        && isStrLen(data.titleBn, 1, 256)
+        && isStrLen(data.messageEn, 1, 1000)
+        && isStrLen(data.messageBn, 1, 1000)
+        && isStrLen(data.createdAt, 1, 64)
+        && isStrLen(data.actorUserId, 1, 128)
+        && isStrLen(data.actorName, 1, 128)
+        && data.recipientUserIds is list
+        && data.recipientUserIds.size() <= 100
+        && (data.recipientUserIds.size() == 0 || data.recipientUserIds[0] is string)
+        && data.readByUserIds is list
+        && data.readByUserIds.size() <= 100
+        && (data.readByUserIds.size() == 0 || data.readByUserIds[0] is string)
+        && isOptStr(data, 'relatedAreaId', 128)
+        && isOptStr(data, 'targetAreaId', 128)
+        && isOptStr(data, 'relatedAssetId', 128)
+        && isOptStr(data, 'relatedTransferId', 128)
+        && isOptStr(data, 'relatedDisposalId', 128)
+        && (!('actionTab' in data) || data.actionTab == null || data.actionTab in ['dashboard', 'assets', 'transfers', 'disposals']);
+    }
+
+    function isValidOrgProfile(data) {
+      return data.keys().hasAll([
+          'nameEn', 'nameBn', 'shortName', 'logoUrl',
+          'addressEn', 'addressBn', 'email', 'phone',
+          'website', 'registrationNo', 'executiveDirector', 'categoryDepreciationRates'
+        ])
+        && data.keys().hasOnly([
+          'nameEn', 'nameBn', 'shortName', 'logoUrl',
+          'addressEn', 'addressBn', 'email', 'phone',
+          'website', 'registrationNo', 'executiveDirector', 'categoryDepreciationRates'
+        ])
+        && isStrLen(data.nameEn, 1, 256)
+        && isStrLen(data.nameBn, 0, 256)
+        && isStrLen(data.shortName, 1, 32)
+        && isStrLen(data.logoUrl, 0, 500000)
+        && isStrLen(data.addressEn, 0, 256)
+        && isStrLen(data.addressBn, 0, 256)
+        && isStrLen(data.email, 1, 128)
+        && isStrLen(data.phone, 0, 64)
+        && isStrLen(data.website, 0, 128)
+        && isStrLen(data.registrationNo, 0, 64)
+        && isStrLen(data.executiveDirector, 0, 128)
+        && data.categoryDepreciationRates is map
+        && data.categoryDepreciationRates.keys().hasAll([
+          'IT_Electronics', 'Furniture', 'Vehicle', 'Kitchenware',
+          'Educational', 'Appliances', 'Medical', 'Facility'
+        ])
+        && data.categoryDepreciationRates.keys().hasOnly([
+          'IT_Electronics', 'Furniture', 'Vehicle', 'Kitchenware',
+          'Educational', 'Appliances', 'Medical', 'Facility'
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. Collection Rules
+    // -------------------------------------------------------------------------
+
     // Assets Collection
     match /assets/{assetId} {
-      allow read, write: if true;
+      allow get: if isValidDocId(assetId);
+      allow list: if request.query.limit != null && request.query.limit <= 5000;
+      allow create: if isValidDocId(assetId) && isValidAsset(incoming());
+      allow update: if isValidDocId(assetId)
+        && isValidAsset(incoming())
+        && incoming().id == existing().id;
+      allow delete: if isValidDocId(assetId);
     }
 
-    // Users Collection
+    // Users Collection (PII & Staff Directory - delete blocked)
     match /users/{userId} {
-      allow read, write: if true;
+      allow get: if isValidDocId(userId);
+      allow list: if request.query.limit != null && request.query.limit <= 500;
+      allow create: if isValidDocId(userId)
+        && isValidUser(incoming())
+        && incoming().id == userId;
+      allow update: if isValidDocId(userId)
+        && isValidUser(incoming())
+        && incoming().id == existing().id
+        && incoming().employeeId == existing().employeeId
+        && (
+          // Action 1: Self Password Change
+          (incoming().diff(existing()).affectedKeys().hasOnly(['password', 'isFirstLogin'])
+            && incoming().password is string
+            && incoming().password.size() >= 4
+            && incoming().password.size() <= 128)
+          ||
+          // Action 2: HR Staff / Role / Assignment Update
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'numericId', 'name', 'email', 'password', 'role', 'assignedAreaIds',
+            'designation', 'department', 'jobLocationCategory', 'employmentNature',
+            'gender', 'phone', 'isFirstLogin', 'active', 'hasLoginPermission',
+            'canApproveDisposal', 'canManageAssets', 'canManageStaff',
+            'canManageAreas', 'canUpdateOrgInfo', 'avatar'
+          ])
+        );
+      allow delete: if false;
     }
 
-    // Areas Collection
+    // Areas Collection (Delete blocked to protect referential integrity)
     match /areas/{areaId} {
-      allow read, write: if true;
+      allow get: if isValidDocId(areaId);
+      allow list: if request.query.limit != null && request.query.limit <= 500;
+      allow create: if isValidDocId(areaId)
+        && isValidArea(incoming())
+        && incoming().id == areaId;
+      allow update: if isValidDocId(areaId)
+        && isValidArea(incoming())
+        && incoming().id == existing().id;
+      allow delete: if false;
     }
 
-    // Transfers Collection
+    // Transfers Collection (Terminal state locking: once Received, immutable; delete blocked)
     match /transfers/{transferId} {
-      allow read, write: if true;
+      allow get: if isValidDocId(transferId);
+      allow list: if request.query.limit != null && request.query.limit <= 1000;
+      allow create: if isValidDocId(transferId)
+        && isValidTransfer(incoming())
+        && incoming().id == transferId
+        && incoming().status == 'In-Transit';
+      allow update: if isValidDocId(transferId)
+        && isValidTransfer(incoming())
+        && existing().status == 'In-Transit'
+        && incoming().status == 'Received'
+        && incoming().id == existing().id
+        && incoming().voucherNumber == existing().voucherNumber
+        && incoming().assetId == existing().assetId
+        && incoming().sourceAreaId == existing().sourceAreaId
+        && incoming().destinationAreaId == existing().destinationAreaId
+        && incoming().dispatchByUserId == existing().dispatchByUserId
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'receiveDateTime', 'receiveCondition',
+          'receivedByUserId', 'receivedByUserName', 'receiveRemarks'
+        ]);
+      allow delete: if false;
     }
 
-    // Disposals Collection
+    // Disposals Collection (Terminal state locking: once Approved/Rejected, immutable; delete blocked)
     match /disposals/{disposalId} {
-      allow read, write: if true;
+      allow get: if isValidDocId(disposalId);
+      allow list: if request.query.limit != null && request.query.limit <= 1000;
+      allow create: if isValidDocId(disposalId)
+        && isValidDisposal(incoming())
+        && incoming().id == disposalId
+        && incoming().status == 'Pending HO Approval';
+      allow update: if isValidDocId(disposalId)
+        && isValidDisposal(incoming())
+        && existing().status == 'Pending HO Approval'
+        && incoming().status in ['Approved', 'Rejected']
+        && incoming().id == existing().id
+        && incoming().assetId == existing().assetId
+        && incoming().assignedAreaId == existing().assignedAreaId
+        && incoming().requestedByUserId == existing().requestedByUserId
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'proposedAction', 'reviewedByUserId',
+          'reviewedByUserName', 'reviewDate', 'reviewComments'
+        ]);
+      allow delete: if false;
     }
 
-    // Settings Collection
+    // Notifications Collection (Append-only read receipts; content immutable; delete blocked)
+    match /notifications/{notificationId} {
+      allow get: if isValidDocId(notificationId);
+      allow list: if request.query.limit != null && request.query.limit <= 150;
+      allow create: if isValidDocId(notificationId)
+        && isValidNotification(incoming())
+        && incoming().id == notificationId;
+      allow update: if isValidDocId(notificationId)
+        && isValidNotification(incoming())
+        && incoming().id == existing().id
+        && incoming().diff(existing()).affectedKeys().hasOnly(['readByUserIds'])
+        && incoming().readByUserIds.hasAll(existing().readByUserIds);
+      allow delete: if false;
+    }
+
+    // Organization Settings Collection (Strict orgProfile doc only; delete blocked)
     match /settings/{settingId} {
-      allow read, write: if true;
+      allow get: if settingId == 'orgProfile';
+      allow list: if false;
+      allow create, update: if settingId == 'orgProfile' && isValidOrgProfile(incoming());
+      allow delete: if false;
     }
 
-    // Connection testing
+    // Connection testing (Read-only check on test/connection doc)
     match /test/{testId} {
-      allow read, write: if true;
+      allow get: if testId == 'connection';
+      allow list, write: if false;
     }
   }
 }

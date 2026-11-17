@@ -23,6 +23,7 @@ import { FirstLoginModal } from './components/FirstLoginModal';
 import { LocationsView } from './components/LocationsView';
 import { LoginScreen } from './components/LoginScreen';
 import { Navbar } from './components/Navbar';
+import { NotificationToast } from './components/NotificationToast';
 import { OrgSettingsView } from './components/OrgSettingsView';
 import { PrintAssetTagModal } from './components/PrintAssetTagModal';
 import { PrintAuditReportModal } from './components/PrintAuditReportModal';
@@ -34,7 +35,16 @@ import { UserProfileModal } from './components/UserProfileModal';
 import { Language, translations } from './i18n/translations';
 import { firebaseSync } from './services/firebaseSync';
 import { storage } from './services/storage';
-import { Area, Asset, AssetTransfer, DisposalRequest, OrganizationProfile, UsabilityStatus, User } from './types';
+import {
+  AppNotification,
+  Area,
+  Asset,
+  AssetTransfer,
+  DisposalRequest,
+  OrganizationProfile,
+  UsabilityStatus,
+  User,
+} from './types';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(() => storage.getCurrentUser());
@@ -46,6 +56,7 @@ export default function App() {
   const [areas, setAreas] = useState<Area[]>(() => storage.getAreas());
   const [transfers, setTransfers] = useState<AssetTransfer[]>(() => storage.getTransfers());
   const [disposals, setDisposals] = useState<DisposalRequest[]>(() => storage.getDisposals());
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => storage.getNotifications());
   const [profile, setProfile] = useState<OrganizationProfile>(() => storage.getOrgProfile());
 
   // Modals
@@ -58,6 +69,7 @@ export default function App() {
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [disposalRequestAsset, setDisposalRequestAsset] = useState<Asset | null>(null);
   const [transferRequestAsset, setTransferRequestAsset] = useState<Asset | null>(null);
+  const [confirmReceiveTransfer, setConfirmReceiveTransfer] = useState<AssetTransfer | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -72,6 +84,7 @@ export default function App() {
       setAreas(storage.getAreas());
       setTransfers(storage.getTransfers());
       setDisposals(storage.getDisposals());
+      setNotifications(storage.getNotifications());
       setProfile(storage.getOrgProfile());
       setLang(storage.getLanguage());
     });
@@ -121,6 +134,30 @@ export default function App() {
     );
   }).length;
 
+  const handleNavigateNotification = (notif: AppNotification) => {
+    setActiveTab(notif.actionTab || 'transfers');
+  };
+
+  const handleConfirmGoodsReceived = (transfer: AssetTransfer, notificationId?: string) => {
+    if (notificationId) {
+      storage.markNotificationRead(notificationId, currentUser.id);
+    }
+    setConfirmReceiveTransfer(transfer);
+    setActiveTab('transfers');
+  };
+
+  const handleConfirmReceiveAsset = (asset: Asset) => {
+    const matched = transfers.find(
+      (tr) => (tr.id === asset.currentTransferId || tr.assetId === asset.id) && tr.status === 'In-Transit'
+    );
+    if (matched) {
+      if (isGlobal || currentUser.assignedAreaIds.includes(matched.destinationAreaId)) {
+        setConfirmReceiveTransfer(matched);
+      }
+      setActiveTab('transfers');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* First Login Password Change Guard */}
@@ -160,6 +197,12 @@ export default function App() {
         lang={lang}
         onToggleLang={handleToggleLang}
         areas={areas}
+        notifications={notifications}
+        transfers={transfers}
+        onMarkNotificationRead={(id) => storage.markNotificationRead(id, currentUser.id)}
+        onMarkAllNotificationsRead={() => storage.markAllNotificationsRead(currentUser.id)}
+        onNavigateNotification={handleNavigateNotification}
+        onConfirmGoodsReceived={handleConfirmGoodsReceived}
       />
 
       {/* Main App Container */}
@@ -325,6 +368,7 @@ export default function App() {
                 setTransferRequestAsset(asset);
                 setActiveTab('transfers');
               }}
+              onConfirmReceiveAsset={handleConfirmReceiveAsset}
               onEditAsset={(asset) => {
                 setEditingAsset(asset);
                 setIsAddAssetOpen(true);
@@ -345,6 +389,8 @@ export default function App() {
               onSaveTransfer={(tr) => storage.saveTransfer(tr)}
               onRequestFromAsset={transferRequestAsset}
               onClearRequestAsset={() => setTransferRequestAsset(null)}
+              onConfirmReceiveTransfer={confirmReceiveTransfer}
+              onClearConfirmReceiveTransfer={() => setConfirmReceiveTransfer(null)}
             />
           )}
 
@@ -410,7 +456,9 @@ export default function App() {
           setEditingAsset(null);
         }}
         onSave={(asset, andPrint) => {
+          const isEditing = Boolean(editingAsset);
           storage.saveAsset(asset);
+          storage.notifyAssetEvent(isEditing ? 'asset_updated' : 'asset_created', asset, currentUser);
           if (andPrint) {
             setTagPrintAsset(asset);
           }
@@ -439,6 +487,11 @@ export default function App() {
         onOpenTransfer={(a) => {
           setTransferRequestAsset(a);
           setActiveTab('transfers');
+        }}
+        onConfirmReceiveAsset={handleConfirmReceiveAsset}
+        onEditAsset={(a) => {
+          setEditingAsset(a);
+          setIsAddAssetOpen(true);
         }}
       />
 
@@ -470,12 +523,16 @@ export default function App() {
         onSave={(assetId, updates) => {
           const asset = assets.find((a) => a.id === assetId);
           if (asset) {
-            storage.saveAsset({
+            const updatedAsset: Asset = {
               ...asset,
               specificRoom: updates.specificRoom,
               usabilityStatus: updates.usabilityStatus,
               remarks: updates.remarks || asset.remarks,
-            });
+              ...(updates.purchaseDate ? { purchaseDate: updates.purchaseDate } : {}),
+              updatedAt: new Date().toISOString(),
+            };
+            storage.saveAsset(updatedAsset);
+            storage.notifyAssetEvent('asset_updated', updatedAsset, currentUser);
           }
         }}
       />
@@ -502,6 +559,17 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Live Notification Toast */}
+      <NotificationToast
+        currentUser={currentUser}
+        notifications={notifications}
+        transfers={transfers}
+        lang={lang}
+        onMarkRead={(id) => storage.markNotificationRead(id, currentUser.id)}
+        onNavigateNotification={handleNavigateNotification}
+        onConfirmGoodsReceived={handleConfirmGoodsReceived}
+      />
     </div>
   );
 }

@@ -3,14 +3,17 @@ import {
   doc,
   getDocs,
   getDocFromServer,
+  limit,
   onSnapshot,
+  orderBy,
+  query,
   setDoc,
   deleteDoc,
   writeBatch,
   Unsubscribe,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { Area, Asset, AssetTransfer, DisposalRequest, OrganizationProfile, User } from '../types';
+import { auth, db } from '../lib/firebase';
+import { AppNotification, Area, Asset, AssetTransfer, DisposalRequest, OrganizationProfile, User } from '../types';
 import {
   DEFAULT_AREAS,
   DEFAULT_ASSETS,
@@ -45,6 +48,30 @@ export function sanitizeForFirestore(data: any): any {
     }
   }
   return clean;
+}
+
+enum FirestoreOp {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+function logFirestoreError(error: unknown, operationType: FirestoreOp, path: string | null) {
+  const errInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    operationType,
+    path,
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+    },
+  };
+  console.warn('Firestore operation notice:', JSON.stringify(errInfo));
 }
 
 class FirebaseSyncService {
@@ -88,6 +115,9 @@ class FirebaseSyncService {
           break;
         case 'saveOrgProfile':
           this.saveOrgProfile(data);
+          break;
+        case 'saveNotification':
+          this.saveNotification(data);
           break;
       }
     });
@@ -144,29 +174,29 @@ class FirebaseSyncService {
   private async checkAndSeedDefaults() {
     try {
       // 1. Ensure baseline organizational areas and authorized users exist in Firestore
-      const areasSnap = await getDocs(collection(db, 'areas'));
+      const areasSnap = await getDocs(query(collection(db, 'areas'), limit(500)));
       if (areasSnap.empty) {
         console.info('Seeding baseline LEEDO areas, users, and org profile to Firebase Cloud...');
         const batch = writeBatch(db);
 
         DEFAULT_AREAS.forEach((area) => {
           const ref = doc(db, 'areas', area.id);
-          batch.set(ref, area);
+          batch.set(ref, sanitizeForFirestore(area));
         });
 
         DEFAULT_USERS.forEach((user) => {
           const ref = doc(db, 'users', user.id);
-          batch.set(ref, user);
+          batch.set(ref, sanitizeForFirestore(user));
         });
 
         const orgRef = doc(db, 'settings', 'orgProfile');
-        batch.set(orgRef, DEFAULT_ORG_PROFILE);
+        batch.set(orgRef, sanitizeForFirestore(DEFAULT_ORG_PROFILE));
 
         await batch.commit();
       }
 
       // 2. Seed initial official LEEDO Excel assets to Firestore if assets collection is empty
-      const assetsSnap = await getDocs(collection(db, 'assets'));
+      const assetsSnap = await getDocs(query(collection(db, 'assets'), limit(5000)));
       if (assetsSnap.empty && DEFAULT_ASSETS.length > 0) {
         console.info('Seeding official LEEDO Excel assets to Firebase Cloud...');
         const batch = writeBatch(db);
@@ -177,35 +207,30 @@ class FirebaseSyncService {
         await batch.commit();
       }
     } catch (err) {
-      console.warn('Seeding check note:', err);
+      logFirestoreError(err, FirestoreOp.GET, 'seedDefaults');
     }
   }
 
   public async wipeAllDemoDataFromCloud(): Promise<void> {
     try {
       this.setStatus('syncing', 'Purging demo data from cloud...');
-      const collectionsToPurge = ['assets', 'transfers', 'disposals'];
-      for (const col of collectionsToPurge) {
-        const snap = await getDocs(collection(db, col));
-        if (!snap.empty) {
-          const batch = writeBatch(db);
-          snap.forEach((d) => batch.delete(d.ref));
-          await batch.commit();
-        }
+      const snap = await getDocs(query(collection(db, 'assets'), limit(5000)));
+      if (!snap.empty) {
+        const batch = writeBatch(db);
+        snap.forEach((d) => batch.delete(d.ref));
+        await batch.commit();
       }
       storage.clearAssets();
-      storage.setAllTransfersFromCloud([]);
-      storage.setAllDisposalsFromCloud([]);
       this.setStatus('connected', 'Firebase Cloud: Synced');
     } catch (err) {
-      console.warn('Wipe demo data notice:', err);
+      logFirestoreError(err, FirestoreOp.DELETE, 'assets');
     }
   }
 
   private setupRealtimeListeners() {
     // 1. Assets Collection Listener
     const unsubAssets = onSnapshot(
-      collection(db, 'assets'),
+      query(collection(db, 'assets'), limit(5000)),
       (snapshot) => {
         const remoteAssets: Asset[] = [];
         snapshot.forEach((doc) => {
@@ -223,7 +248,7 @@ class FirebaseSyncService {
         this.setStatus('connected', 'Firebase Cloud: Synced');
       },
       (error) => {
-        console.warn('Assets listener error:', error);
+        logFirestoreError(error, FirestoreOp.LIST, 'assets');
         this.setStatus('offline', 'Operating in local offline cache mode');
       }
     );
@@ -231,7 +256,7 @@ class FirebaseSyncService {
 
     // 2. Transfers Collection Listener
     const unsubTransfers = onSnapshot(
-      collection(db, 'transfers'),
+      query(collection(db, 'transfers'), limit(1000)),
       (snapshot) => {
         const remoteTransfers: AssetTransfer[] = [];
         snapshot.forEach((doc) => {
@@ -239,13 +264,13 @@ class FirebaseSyncService {
         });
         storage.setAllTransfersFromCloud(remoteTransfers);
       },
-      (error) => console.warn('Transfers listener note:', error)
+      (error) => logFirestoreError(error, FirestoreOp.LIST, 'transfers')
     );
     this.unsubscribers.push(unsubTransfers);
 
     // 3. Disposals Collection Listener
     const unsubDisposals = onSnapshot(
-      collection(db, 'disposals'),
+      query(collection(db, 'disposals'), limit(1000)),
       (snapshot) => {
         const remoteDisposals: DisposalRequest[] = [];
         snapshot.forEach((doc) => {
@@ -253,13 +278,13 @@ class FirebaseSyncService {
         });
         storage.setAllDisposalsFromCloud(remoteDisposals);
       },
-      (error) => console.warn('Disposals listener note:', error)
+      (error) => logFirestoreError(error, FirestoreOp.LIST, 'disposals')
     );
     this.unsubscribers.push(unsubDisposals);
 
     // 4. Areas Collection Listener
     const unsubAreas = onSnapshot(
-      collection(db, 'areas'),
+      query(collection(db, 'areas'), limit(500)),
       (snapshot) => {
         if (!snapshot.empty) {
           const remoteAreas: Area[] = [];
@@ -269,13 +294,13 @@ class FirebaseSyncService {
           storage.setAllAreasFromCloud(remoteAreas);
         }
       },
-      (error) => console.warn('Areas listener note:', error)
+      (error) => logFirestoreError(error, FirestoreOp.LIST, 'areas')
     );
     this.unsubscribers.push(unsubAreas);
 
     // 5. Users Collection Listener
     const unsubUsers = onSnapshot(
-      collection(db, 'users'),
+      query(collection(db, 'users'), limit(500)),
       (snapshot) => {
         if (!snapshot.empty) {
           const remoteUsers: User[] = [];
@@ -285,7 +310,7 @@ class FirebaseSyncService {
           storage.setAllUsersFromCloud(remoteUsers);
         }
       },
-      (error) => console.warn('Users listener note:', error)
+      (error) => logFirestoreError(error, FirestoreOp.LIST, 'users')
     );
     this.unsubscribers.push(unsubUsers);
 
@@ -297,9 +322,28 @@ class FirebaseSyncService {
           storage.setOrgProfileFromCloud(docSnap.data() as OrganizationProfile);
         }
       },
-      (error) => console.warn('Settings listener note:', error)
+      (error) => logFirestoreError(error, FirestoreOp.GET, 'settings/orgProfile')
     );
     this.unsubscribers.push(unsubSettings);
+
+    // 7. Notifications Collection Listener (Real-time latest 150)
+    const notifQuery = query(
+      collection(db, 'notifications'),
+      orderBy('createdAt', 'desc'),
+      limit(150)
+    );
+    const unsubNotifications = onSnapshot(
+      notifQuery,
+      (snapshot) => {
+        const remoteNotifs: AppNotification[] = [];
+        snapshot.forEach((docSnap) => {
+          remoteNotifs.push(docSnap.data() as AppNotification);
+        });
+        storage.setAllNotificationsFromCloud(remoteNotifs);
+      },
+      (error) => logFirestoreError(error, FirestoreOp.LIST, 'notifications')
+    );
+    this.unsubscribers.push(unsubNotifications);
   }
 
   // --- Cloud Write Operations ---
@@ -309,10 +353,60 @@ class FirebaseSyncService {
     return encodeURIComponent(id).replace(/%/g, '_');
   }
 
+  // Clamp asset fields to match firebase-blueprint.json & firestore.rules volumetric bounds
+  private clampAssetForFirestore(asset: Asset) {
+    const validCategories = new Set([
+      'IT_Electronics',
+      'Furniture',
+      'Vehicle',
+      'Kitchenware',
+      'Educational',
+      'Appliances',
+      'Medical',
+      'Facility',
+    ]);
+    const validStatuses = new Set(['Usable', 'Repairable', 'Unusable', 'Disposed']);
+    const validTransfers = new Set(['none', 'in_transit', 'transferred']);
+    const validDisposalMethods = new Set(['Scrapped', 'Auction', 'Recycled', 'Donated']);
+
+    return sanitizeForFirestore({
+      ...asset,
+      id: String(asset.id || '').slice(0, 128),
+      titleEn: String(asset.titleEn || 'Asset').slice(0, 256),
+      titleBn: asset.titleBn ? String(asset.titleBn).slice(0, 256) : undefined,
+      category: validCategories.has(asset.category) ? asset.category : 'Facility',
+      itemTypeCode: asset.itemTypeCode ? String(asset.itemTypeCode).slice(0, 16) : undefined,
+      acquisitionType: asset.acquisitionType === 'Donation' ? 'Donation' : 'Purchased',
+      donorOrVendor: asset.donorOrVendor ? String(asset.donorOrVendor).slice(0, 256) : undefined,
+      purchaseDate: String(asset.purchaseDate || new Date().toISOString().split('T')[0]).slice(0, 32),
+      purchaseValueBDT: Math.max(0, Math.min(1000000000, Number(asset.purchaseValueBDT) || 0)),
+      initialCondition: asset.initialCondition === 'Used' ? 'Used' : 'New',
+      usabilityStatus: validStatuses.has(asset.usabilityStatus) ? asset.usabilityStatus : 'Usable',
+      assignedAreaId: String(asset.assignedAreaId || 'area-ho').slice(0, 128),
+      specificRoom: asset.specificRoom ? String(asset.specificRoom).slice(0, 128) : undefined,
+      serialNumber: asset.serialNumber ? String(asset.serialNumber).slice(0, 128) : undefined,
+      remarks: asset.remarks ? String(asset.remarks).slice(0, 1000) : undefined,
+      createdBy: asset.createdBy ? String(asset.createdBy).slice(0, 128) : undefined,
+      createdAt: asset.createdAt ? String(asset.createdAt).slice(0, 64) : undefined,
+      updatedAt: asset.updatedAt ? String(asset.updatedAt).slice(0, 64) : undefined,
+      transferStatus:
+        asset.transferStatus && validTransfers.has(asset.transferStatus) ? asset.transferStatus : undefined,
+      currentTransferId: asset.currentTransferId ? String(asset.currentTransferId).slice(0, 128) : undefined,
+      disposalDate: asset.disposalDate ? String(asset.disposalDate).slice(0, 32) : undefined,
+      disposalReason: asset.disposalReason ? String(asset.disposalReason).slice(0, 512) : undefined,
+      disposalMethod:
+        asset.disposalMethod && validDisposalMethods.has(asset.disposalMethod) ? asset.disposalMethod : undefined,
+      salvageValueBDT:
+        asset.salvageValueBDT !== undefined && asset.salvageValueBDT !== null
+          ? Math.max(0, Math.min(1000000000, Number(asset.salvageValueBDT) || 0))
+          : undefined,
+    });
+  }
+
   public async saveAsset(asset: Asset): Promise<void> {
     this.setStatus('syncing', 'Saving asset to Firebase Cloud...');
     try {
-      const clean = sanitizeForFirestore({
+      const clean = this.clampAssetForFirestore({
         ...asset,
         updatedAt: new Date().toISOString(),
       });
@@ -320,7 +414,7 @@ class FirebaseSyncService {
       await setDoc(assetRef, clean);
       this.setStatus('connected', 'Asset saved to Firebase Cloud');
     } catch (error) {
-      console.warn('Save asset notice:', error);
+      logFirestoreError(error, FirestoreOp.WRITE, `assets/${this.toSafeDocId(asset.id)}`);
       this.setStatus('offline', 'Saved locally. Will auto-sync to cloud when online.');
     }
   }
@@ -332,7 +426,7 @@ class FirebaseSyncService {
       await deleteDoc(assetRef);
       this.setStatus('connected', 'Asset removed from Firebase Cloud');
     } catch (error) {
-      console.warn('Delete asset notice:', error);
+      logFirestoreError(error, FirestoreOp.DELETE, `assets/${this.toSafeDocId(assetId)}`);
       this.setStatus('offline', 'Removed locally. Will sync to cloud when online.');
     }
   }
@@ -341,7 +435,7 @@ class FirebaseSyncService {
   public async clearAllAssets(): Promise<void> {
     this.setStatus('syncing', 'Clearing assets in Firebase Cloud...');
     try {
-      const snap = await getDocs(collection(db, 'assets'));
+      const snap = await getDocs(query(collection(db, 'assets'), limit(5000)));
       if (!snap.empty) {
         const docs = snap.docs;
         for (let i = 0; i < docs.length; i += 300) {
@@ -353,7 +447,7 @@ class FirebaseSyncService {
       }
       this.setStatus('connected', 'All assets cleared from Firebase Cloud');
     } catch (error) {
-      console.warn('Notice clearing assets in cloud:', error);
+      logFirestoreError(error, FirestoreOp.DELETE, 'assets');
     }
   }
 
@@ -369,7 +463,7 @@ class FirebaseSyncService {
         const chunk = uniqueAssets.slice(i, i + 300);
         const batch = writeBatch(db);
         chunk.forEach((asset) => {
-          const clean = sanitizeForFirestore(asset);
+          const clean = this.clampAssetForFirestore(asset);
           const ref = doc(db, 'assets', this.toSafeDocId(asset.id));
           batch.set(ref, clean);
         });
@@ -379,7 +473,7 @@ class FirebaseSyncService {
       // 2. If replaceExisting is true, remove only the obsolete orphan docs that aren't in newAssets
       if (replaceExisting) {
         const safeDocIds = new Set(uniqueAssets.map((a) => this.toSafeDocId(a.id)));
-        const snap = await getDocs(collection(db, 'assets'));
+        const snap = await getDocs(query(collection(db, 'assets'), limit(5000)));
         const orphans = snap.docs.filter((d) => !safeDocIds.has(d.id));
         if (orphans.length > 0) {
           for (let i = 0; i < orphans.length; i += 300) {
@@ -393,7 +487,7 @@ class FirebaseSyncService {
       
       this.setStatus('connected', `Successfully synced ${uniqueAssets.length} assets to Firebase Cloud`);
     } catch (error) {
-      console.warn('Bulk save note:', error);
+      logFirestoreError(error, FirestoreOp.WRITE, 'assets');
       this.setStatus('offline', 'Saved to local buffer.');
     }
   }
@@ -402,10 +496,10 @@ class FirebaseSyncService {
     this.setStatus('syncing', 'Updating transfer in Firebase Cloud...');
     try {
       const ref = doc(db, 'transfers', transfer.id);
-      await setDoc(ref, transfer);
+      await setDoc(ref, sanitizeForFirestore(transfer));
       this.setStatus('connected', 'Transfer synced to Firebase Cloud');
     } catch (error) {
-      console.error('Error saving transfer to cloud:', error);
+      logFirestoreError(error, FirestoreOp.WRITE, `transfers/${transfer.id}`);
     }
   }
 
@@ -413,10 +507,10 @@ class FirebaseSyncService {
     this.setStatus('syncing', 'Updating disposal in Firebase Cloud...');
     try {
       const ref = doc(db, 'disposals', disposal.id);
-      await setDoc(ref, disposal);
+      await setDoc(ref, sanitizeForFirestore(disposal));
       this.setStatus('connected', 'Disposal request synced to Firebase Cloud');
     } catch (error) {
-      console.error('Error saving disposal to cloud:', error);
+      logFirestoreError(error, FirestoreOp.WRITE, `disposals/${disposal.id}`);
     }
   }
 
@@ -425,25 +519,34 @@ class FirebaseSyncService {
       const ref = doc(db, 'users', user.id);
       await setDoc(ref, sanitizeForFirestore(user));
     } catch (error) {
-      console.error('Error saving user to cloud:', error);
+      logFirestoreError(error, FirestoreOp.WRITE, `users/${user.id}`);
     }
   }
 
   public async saveArea(area: Area): Promise<void> {
     try {
       const ref = doc(db, 'areas', area.id);
-      await setDoc(ref, area);
+      await setDoc(ref, sanitizeForFirestore(area));
     } catch (error) {
-      console.error('Error saving area to cloud:', error);
+      logFirestoreError(error, FirestoreOp.WRITE, `areas/${area.id}`);
     }
   }
 
   public async saveOrgProfile(profile: OrganizationProfile): Promise<void> {
     try {
       const ref = doc(db, 'settings', 'orgProfile');
-      await setDoc(ref, profile);
+      await setDoc(ref, sanitizeForFirestore(profile));
     } catch (error) {
-      console.error('Error saving org profile to cloud:', error);
+      logFirestoreError(error, FirestoreOp.WRITE, 'settings/orgProfile');
+    }
+  }
+
+  public async saveNotification(notification: AppNotification): Promise<void> {
+    try {
+      const ref = doc(db, 'notifications', notification.id);
+      await setDoc(ref, sanitizeForFirestore(notification));
+    } catch (error) {
+      logFirestoreError(error, FirestoreOp.WRITE, `notifications/${notification.id}`);
     }
   }
 

@@ -156,3 +156,34 @@ export interface OrganizationProfile {
   executiveDirector: string;
   categoryDepreciationRates: Record<AssetCategory, number>; // decimal, e.g. 0.20
 }
+
+export type NotificationType =
+  | 'transfer_dispatched'
+  | 'transfer_received'
+  | 'disposal_requested'
+  | 'disposal_approved'
+  | 'disposal_rejected'
+  | 'asset_created'
+  | 'asset_updated'
+  | 'asset_bulk_imported';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  titleEn: string;
+  titleBn: string;
+  messageEn: string;
+  messageBn: string;
+  createdAt: string; // ISO string
+  actorUserId: string;
+  actorName: string;
+  recipientUserIds: string[];
+  readByUserIds: string[];
+  relatedAreaId?: string;
+  targetAreaId?: string;
+  relatedAssetId?: string;
+  relatedTransferId?: string;
+  relatedDisposalId?: string;
+  actionTab?: 'dashboard' | 'assets' | 'transfers' | 'disposals';
+}
+

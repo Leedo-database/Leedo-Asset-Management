@@ -14,6 +14,7 @@ import {
   Filter,
   Layers,
   MapPin,
+  PackageCheck,
   PlusCircle,
   Printer,
   QrCode,
@@ -45,6 +46,7 @@ interface AssetRegistryViewProps {
   onOpenQuickUpdate: (asset: Asset) => void;
   onOpenDisposalRequest: (asset: Asset) => void;
   onOpenTransfer: (asset: Asset) => void;
+  onConfirmReceiveAsset?: (asset: Asset) => void;
   onEditAsset: (asset: Asset) => void;
   onDeleteAsset: (asset: Asset) => void;
   onPrintTag?: (asset: Asset) => void;
@@ -61,6 +63,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
   onOpenQuickUpdate,
   onOpenDisposalRequest,
   onOpenTransfer,
+  onConfirmReceiveAsset,
   onEditAsset,
   onDeleteAsset,
   onPrintTag,
@@ -802,6 +805,18 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                               title={t.initiateTransfer}
                             >
                               <Truck className="w-4 h-4 text-blue-600" />
+                            </button>
+                          )}
+
+                          {/* Quick Goods Received (when asset is In-Transit) */}
+                          {asset.transferStatus === 'in_transit' && onConfirmReceiveAsset && (
+                            <button
+                              onClick={() => onConfirmReceiveAsset(asset)}
+                              className="px-2 py-1 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors cursor-pointer inline-flex items-center space-x-1"
+                              title={lang === 'bn' ? 'পণ্য গ্রহণ নিশ্চিত করুন (Goods Received)' : 'Confirm Goods Received'}
+                            >
+                              <PackageCheck className="w-3.5 h-3.5" />
+                              <span>{lang === 'bn' ? 'Received' : 'Receive'}</span>
                             </button>
                           )}
 

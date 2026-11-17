@@ -6,8 +6,10 @@ import {
   CheckCircle2,
   Clock,
   Coins,
+  Edit,
   FileText,
   MapPin,
+  PackageCheck,
   Printer,
   QrCode,
   Tag,
@@ -30,7 +32,9 @@ interface AssetDetailModalProps {
   onOpenQuickUpdate: (asset: Asset) => void;
   onOpenDisposalRequest: (asset: Asset) => void;
   onOpenTransfer: (asset: Asset) => void;
+  onConfirmReceiveAsset?: (asset: Asset) => void;
   onPrintTag?: (asset: Asset) => void;
+  onEditAsset?: (asset: Asset) => void;
 }
 
 export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
@@ -43,7 +47,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   onOpenQuickUpdate,
   onOpenDisposalRequest,
   onOpenTransfer,
+  onConfirmReceiveAsset,
   onPrintTag,
+  onEditAsset,
 }) => {
   if (!isOpen || !asset) return null;
 
@@ -278,6 +284,20 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               </button>
             )}
 
+            {/* Full Asset Edit (Authorized Editors: Sazzad, Rone, Habib, Kanta, Forhad) */}
+            {currentUser.canManageAssets && onEditAsset && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onEditAsset(asset);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 font-bold text-xs transition-colors flex items-center space-x-1 cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5 text-amber-600" />
+                <span>{lang === 'bn' ? 'সম্পাদনা (Edit)' : 'Edit Asset'}</span>
+              </button>
+            )}
+
             {/* Quick condition update for field staff */}
             <button
               onClick={() => {
@@ -315,6 +335,20 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               >
                 <Truck className="w-3.5 h-3.5 text-blue-600" />
                 <span>{t.initiateTransfer}</span>
+              </button>
+            )}
+
+            {/* Goods Received (when asset is currently In-Transit) */}
+            {asset.transferStatus === 'in_transit' && onConfirmReceiveAsset && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onConfirmReceiveAsset(asset);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center space-x-1 cursor-pointer shadow-xs"
+              >
+                <PackageCheck className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'Goods Received নিশ্চিত করুন' : 'Confirm Goods Received'}</span>
               </button>
             )}
           </div>

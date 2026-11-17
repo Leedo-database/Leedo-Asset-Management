@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import { Language, translations } from '../i18n/translations';
 import { storage } from '../services/storage';
-import { Area, User } from '../types';
+import { AppNotification, Area, AssetTransfer, User } from '../types';
+import { NotificationBell } from './NotificationBell';
 
 interface NavbarProps {
   currentUser: User | null;
@@ -27,6 +28,12 @@ interface NavbarProps {
   lang: Language;
   onToggleLang: () => void;
   areas: Area[];
+  notifications: AppNotification[];
+  transfers: AssetTransfer[];
+  onMarkNotificationRead: (notificationId: string) => void;
+  onMarkAllNotificationsRead: () => void;
+  onNavigateNotification: (notification: AppNotification) => void;
+  onConfirmGoodsReceived: (transfer: AssetTransfer, notificationId?: string) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -38,6 +45,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   lang,
   onToggleLang,
   areas,
+  notifications,
+  transfers,
+  onMarkNotificationRead,
+  onMarkAllNotificationsRead,
+  onNavigateNotification,
+  onConfirmGoodsReceived,
 }) => {
   const t = translations[lang];
   const orgProfile = storage.getOrgProfile();
@@ -137,10 +150,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               title={lang === 'bn' ? 'সম্পদ অডিট ও প্রিন্ট রিপোর্ট ফরম্যাট' : 'Print Asset Audit Report'}
             >
               <Printer className="w-3.5 h-3.5 text-red-600" />
-              <span>{lang === 'bn' ? 'রিপোর্ট ফরম্যাট' : 'Report Format'}</span>
+              <span className="hidden md:inline">{lang === 'bn' ? 'রিপোর্ট ফরম্যাট' : 'Report Format'}</span>
             </button>
 
-
+            {/* Real-time Notification Bell */}
+            {currentUser && (
+              <NotificationBell
+                currentUser={currentUser}
+                notifications={notifications}
+                transfers={transfers}
+                lang={lang}
+                onMarkRead={onMarkNotificationRead}
+                onMarkAllRead={onMarkAllNotificationsRead}
+                onNavigateNotification={onNavigateNotification}
+                onConfirmGoodsReceived={onConfirmGoodsReceived}
+              />
+            )}
 
             {/* Current User Badge & Profile */}
             {currentUser && (

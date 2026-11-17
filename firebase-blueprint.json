@@ -51,7 +51,7 @@
         "titleBn": { "type": "string", "maxLength": 256 },
         "category": { "type": "string", "enum": ["IT_Electronics", "Furniture", "Vehicle", "Kitchenware", "Educational", "Appliances", "Medical", "Facility"] },
         "acquisitionType": { "type": "string", "enum": ["Purchased", "Donation"] },
-        "donorOrVendor": { "type": "string", "maxLength": 128 },
+        "donorOrVendor": { "type": "string", "maxLength": 256 },
         "purchaseDate": { "type": "string", "maxLength": 32 },
         "purchaseValueBDT": { "type": "number" },
         "initialCondition": { "type": "string", "enum": ["New", "Used"] },
@@ -59,7 +59,7 @@
         "assignedAreaId": { "type": "string", "maxLength": 128 },
         "specificRoom": { "type": "string", "maxLength": 128 },
         "serialNumber": { "type": "string", "maxLength": 128 },
-        "remarks": { "type": "string", "maxLength": 512 },
+        "remarks": { "type": "string", "maxLength": 1000 },
         "createdBy": { "type": "string", "maxLength": 128 },
         "createdAt": { "type": "string", "maxLength": 64 },
         "updatedAt": { "type": "string", "maxLength": 64 },
@@ -132,6 +132,31 @@
         "executiveDirector": { "type": "string", "maxLength": 128 }
       },
       "required": ["nameEn", "shortName", "email"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "Real-time system notification for asset transfers, goods receipt, disposals, and asset updates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["transfer_dispatched", "transfer_received", "disposal_requested", "disposal_approved", "disposal_rejected", "asset_created", "asset_updated", "asset_bulk_imported"] },
+        "titleEn": { "type": "string", "maxLength": 256 },
+        "titleBn": { "type": "string", "maxLength": 256 },
+        "messageEn": { "type": "string", "maxLength": 1000 },
+        "messageBn": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "actorUserId": { "type": "string", "maxLength": 128 },
+        "actorName": { "type": "string", "maxLength": 128 },
+        "recipientUserIds": { "type": "array" },
+        "readByUserIds": { "type": "array" },
+        "relatedAreaId": { "type": "string", "maxLength": 128 },
+        "targetAreaId": { "type": "string", "maxLength": 128 },
+        "relatedAssetId": { "type": "string", "maxLength": 128 },
+        "relatedTransferId": { "type": "string", "maxLength": 128 },
+        "relatedDisposalId": { "type": "string", "maxLength": 128 },
+        "actionTab": { "type": "string", "enum": ["dashboard", "assets", "transfers", "disposals"] }
+      },
+      "required": ["id", "type", "titleEn", "messageEn", "createdAt", "recipientUserIds", "readByUserIds"]
     }
   },
   "firestore": {
@@ -154,6 +179,10 @@
     "/disposals/{disposalId}": {
       "schema": { "$ref": "#/entities/DisposalRequest" },
       "description": "Disposal and write-off requests with financial depreciation audit"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/AppNotification" },
+      "description": "Real-time notifications targeted to center staff and core executives"
     },
     "/settings/orgProfile": {
       "schema": { "$ref": "#/entities/OrganizationProfile" },

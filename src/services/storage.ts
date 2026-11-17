@@ -1,10 +1,12 @@
 import {
+  AppNotification,
   Area,
   Asset,
   AssetCategory,
   AssetTransfer,
   DisposalRequest,
   ItemTypeDefinition,
+  NotificationType,
   OrganizationProfile,
   User,
 } from '../types';
@@ -20,6 +22,7 @@ const KEYS = {
   ITEM_TYPES: `${STORAGE_PREFIX}item_types`,
   TRANSFERS: `${STORAGE_PREFIX}transfers`,
   DISPOSALS: `${STORAGE_PREFIX}disposals`,
+  NOTIFICATIONS: `${STORAGE_PREFIX}notifications`,
   ORG_PROFILE: `${STORAGE_PREFIX}org_profile`,
   LANG: `${STORAGE_PREFIX}language`,
 };
@@ -312,6 +315,10 @@ export function inferItemTypeCode(title = '', category?: AssetCategory): string 
 
 // Exact EIDs authorized to Add / Edit / Bulk Import Assets (Forhad, Kanta, Habib, Rone, Sazzad)
 export const ASSET_EDITOR_EIDS = ['1001', '1002', '1004', '1009', '1079'];
+
+// Core management EIDs who receive EVERY notification (Forhad, Kanta, Habib, Rone, Sazzad)
+export const CORE_NOTIFY_EIDS = ['1001', '1002', '1004', '1009', '1079'];
+export const OMAR_EID = '1057';
 
 // Pre-seeded Users matching LEEDO Official Employee Database
 export const DEFAULT_USERS: User[] = [
@@ -1618,6 +1625,9 @@ class StorageService {
     if (!localStorage.getItem(KEYS.ORG_PROFILE)) {
       localStorage.setItem(KEYS.ORG_PROFILE, JSON.stringify(DEFAULT_ORG_PROFILE));
     }
+    if (!localStorage.getItem(KEYS.NOTIFICATIONS)) {
+      localStorage.setItem(KEYS.NOTIFICATIONS, JSON.stringify([]));
+    }
 
     // Non-destructive RBAC v11 sync: Only Forhad (1001), Kanta (1002), Habib (1004), Rone (1009), Sazzad (1079) can edit assets
     if (localStorage.getItem(`${STORAGE_PREFIX}rbac_v11`) !== 'done') {
@@ -1699,6 +1709,14 @@ class StorageService {
 
   public setAllAreasFromCloud(areas: Area[]): void {
     localStorage.setItem(KEYS.AREAS, JSON.stringify(areas));
+    this.notify();
+  }
+
+  public setAllNotificationsFromCloud(notifications: AppNotification[]): void {
+    const sorted = [...notifications]
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+      .slice(0, 150);
+    localStorage.setItem(KEYS.NOTIFICATIONS, JSON.stringify(sorted));
     this.notify();
   }
 
@@ -1872,7 +1890,7 @@ class StorageService {
     return fixed;
   }
 
-  public saveAsset(asset: Asset): void {
+  public saveAsset(asset: Asset, _skipNotification = false): void {
     const assets = this.getAssets();
     const index = assets.findIndex((a) => a.id === asset.id);
     const updatedAsset = {
@@ -1976,6 +1994,190 @@ class StorageService {
     return `${prefix}${String(nextSeq).padStart(3, '0')}`;
   }
 
+  // --- Notifications ---
+  public getNotifications(): AppNotification[] {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(KEYS.NOTIFICATIONS);
+    if (!raw) return [];
+    try {
+      const parsed: AppNotification[] = JSON.parse(raw);
+      return Array.isArray(parsed)
+        ? [...parsed].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private resolveRecipientUserIds(options: {
+    extraEids?: string[];
+    areaIds?: string[];
+    extraUserIds?: string[];
+  }): string[] {
+    const users = this.getUsers();
+    const areas = this.getAreas();
+    const recipientSet = new Set<string>();
+    const targetEids = new Set([...CORE_NOTIFY_EIDS, ...(options.extraEids || [])]);
+    const targetAreas = new Set((options.areaIds || []).filter(Boolean));
+
+    const contactNames = new Set(
+      areas
+        .filter((a) => targetAreas.has(a.id) && a.contactPerson)
+        .map((a) => a.contactPerson.trim().toLowerCase())
+    );
+
+    const allKnownUsers = [...users];
+    DEFAULT_USERS.forEach((du) => {
+      if (!allKnownUsers.some((u) => u.id === du.id)) {
+        allKnownUsers.push(du);
+      }
+    });
+
+    allKnownUsers.forEach((u) => {
+      if (!u.active) return;
+      if (targetEids.has(u.employeeId)) {
+        recipientSet.add(u.id);
+        return;
+      }
+      if (options.extraUserIds?.includes(u.id)) {
+        recipientSet.add(u.id);
+        return;
+      }
+      if (u.assignedAreaIds?.some((aid) => aid !== 'ALL' && targetAreas.has(aid))) {
+        recipientSet.add(u.id);
+        return;
+      }
+      if (contactNames.has(u.name.trim().toLowerCase())) {
+        recipientSet.add(u.id);
+      }
+    });
+
+    (options.extraUserIds || []).forEach((id) => {
+      if (id) recipientSet.add(id);
+    });
+
+    return Array.from(recipientSet);
+  }
+
+  public saveNotification(notification: AppNotification): void {
+    const list = this.getNotifications();
+    const idx = list.findIndex((n) => n.id === notification.id);
+    if (idx >= 0) {
+      list[idx] = notification;
+    } else {
+      list.unshift(notification);
+    }
+    const capped = list
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+      .slice(0, 150);
+    localStorage.setItem(KEYS.NOTIFICATIONS, JSON.stringify(capped));
+    this.notify();
+    this.cloudSyncHandler?.('saveNotification', notification);
+  }
+
+  public markNotificationRead(notificationId: string, userId: string): void {
+    const list = this.getNotifications();
+    const target = list.find((n) => n.id === notificationId);
+    if (!target) return;
+    if (target.readByUserIds?.includes(userId)) return;
+
+    const updated: AppNotification = {
+      ...target,
+      readByUserIds: [...(target.readByUserIds || []), userId],
+    };
+    this.saveNotification(updated);
+  }
+
+  public markAllNotificationsRead(userId: string): void {
+    const list = this.getNotifications();
+    const updatedList: AppNotification[] = [];
+    const changed: AppNotification[] = [];
+
+    for (const n of list) {
+      if (n.recipientUserIds?.includes(userId) && !n.readByUserIds?.includes(userId)) {
+        const upd: AppNotification = {
+          ...n,
+          readByUserIds: [...(n.readByUserIds || []), userId],
+        };
+        updatedList.push(upd);
+        changed.push(upd);
+      } else {
+        updatedList.push(n);
+      }
+    }
+
+    if (changed.length === 0) return;
+    localStorage.setItem(KEYS.NOTIFICATIONS, JSON.stringify(updatedList));
+    this.notify();
+    changed.forEach((n) => this.cloudSyncHandler?.('saveNotification', n));
+  }
+
+  public notifyAssetEvent(
+    type: Extract<NotificationType, 'asset_created' | 'asset_updated'>,
+    asset: Asset,
+    actor?: User | null
+  ): void {
+    const area = this.getAreas().find((a) => a.id === asset.assignedAreaId);
+    const areaEn = area?.nameEn || 'Center';
+    const areaBn = area?.nameBn || 'কেন্দ্র';
+    const actorName = actor?.name || asset.createdBy || 'Staff';
+    const actorId = actor?.id || 'system';
+    const recipientUserIds = this.resolveRecipientUserIds({
+      areaIds: [asset.assignedAreaId],
+      extraUserIds: [actorId],
+    });
+
+    const isCreate = type === 'asset_created';
+    this.saveNotification({
+      id: `NTF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type,
+      titleEn: isCreate
+        ? `New Asset Added: ${asset.titleEn}`
+        : `Asset Updated: ${asset.titleEn}`,
+      titleBn: isCreate
+        ? `নতুন সম্পদ যুক্ত: ${asset.titleEn}`
+        : `সম্পদ আপডেট: ${asset.titleEn}`,
+      messageEn: isCreate
+        ? `${asset.titleEn} (${asset.id}) was registered at ${areaEn} (${asset.specificRoom || 'General'}) by ${actorName}.`
+        : `${asset.titleEn} (${asset.id}) at ${areaEn} (${asset.specificRoom || 'General'}) — Status: ${asset.usabilityStatus}, updated by ${actorName}.`,
+      messageBn: isCreate
+        ? `${areaBn} (${asset.specificRoom || 'সাধারণ'})-এ ${asset.titleEn} (${asset.id}) যুক্ত করেছেন ${actorName}।`
+        : `${areaBn} (${asset.specificRoom || 'সাধারণ'})-এর ${asset.titleEn} (${asset.id}) — বর্তমান অবস্থা: ${asset.usabilityStatus}, আপডেট করেছেন ${actorName}।`,
+      createdAt: new Date().toISOString(),
+      actorUserId: actorId,
+      actorName,
+      recipientUserIds,
+      readByUserIds: [],
+      relatedAreaId: asset.assignedAreaId,
+      relatedAssetId: asset.id,
+      actionTab: 'assets',
+    });
+  }
+
+  public notifyBulkImport(count: number, actor?: User | null): void {
+    if (count <= 0) return;
+    const actorName = actor?.name || 'Admin';
+    const actorId = actor?.id || 'system';
+    const recipientUserIds = this.resolveRecipientUserIds({
+      extraUserIds: [actorId],
+    });
+
+    this.saveNotification({
+      id: `NTF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type: 'asset_bulk_imported',
+      titleEn: `Bulk Asset Import (${count} Items)`,
+      titleBn: `বাল্ক সম্পদ আপলোড (${count}টি আইটেম)`,
+      messageEn: `${count} asset record(s) were saved to the cloud database via Bulk Upload by ${actorName}.`,
+      messageBn: `${actorName} কর্তৃক এক্সেল বাল্ক আপলোডের মাধ্যমে ${count}টি সম্পদ ক্লাউড ডেটাবেজে সংরক্ষণ করা হয়েছে।`,
+      createdAt: new Date().toISOString(),
+      actorUserId: actorId,
+      actorName,
+      recipientUserIds,
+      readByUserIds: [],
+      actionTab: 'assets',
+    });
+  }
+
   // --- Transfers ---
   public getTransfers(): AssetTransfer[] {
     const raw = localStorage.getItem(KEYS.TRANSFERS);
@@ -1985,6 +2187,7 @@ class StorageService {
   public saveTransfer(transfer: AssetTransfer): void {
     const transfers = this.getTransfers();
     const index = transfers.findIndex((t) => t.id === transfer.id);
+    const prev = index >= 0 ? transfers[index] : undefined;
     if (index >= 0) {
       transfers[index] = transfer;
     } else {
@@ -2004,7 +2207,67 @@ class StorageService {
         asset.assignedAreaId = transfer.destinationAreaId;
         asset.currentTransferId = undefined;
       }
-      this.saveAsset(asset);
+      this.saveAsset(asset, true);
+    }
+
+    // Emit Notification for Transfer Dispatched OR Goods Received
+    const areas = this.getAreas();
+    const srcArea = areas.find((a) => a.id === transfer.sourceAreaId);
+    const destArea = areas.find((a) => a.id === transfer.destinationAreaId);
+    const srcEn = srcArea?.nameEn || 'Source Center';
+    const srcBn = srcArea?.nameBn || 'প্রেরক কেন্দ্র';
+    const destEn = destArea?.nameEn || 'Destination Center';
+    const destBn = destArea?.nameBn || 'গন্তব্য কেন্দ্র';
+
+    if (!prev && transfer.status === 'In-Transit') {
+      const recipientUserIds = this.resolveRecipientUserIds({
+        areaIds: [transfer.destinationAreaId, transfer.sourceAreaId],
+        extraUserIds: [transfer.dispatchByUserId],
+      });
+      this.saveNotification({
+        id: `NTF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: 'transfer_dispatched',
+        titleEn: `Transfer Assigned to ${destEn}`,
+        titleBn: `${destBn}-এ সম্পদ স্থানান্তর পাঠানো হয়েছে`,
+        messageEn: `${transfer.assetTitle} (${transfer.assetId}) transferred from ${srcEn} to ${destEn} by ${transfer.dispatchByUserName}. Voucher: ${transfer.voucherNumber}. Please confirm Goods Received.`,
+        messageBn: `${srcBn} থেকে ${destBn}-এ ${transfer.assetTitle} (${transfer.assetId}) পাঠিয়েছেন ${transfer.dispatchByUserName}। ভাউচার: ${transfer.voucherNumber}। পণ্য পৌঁছালে "Goods Received" নিশ্চিত করুন।`,
+        createdAt: new Date().toISOString(),
+        actorUserId: transfer.dispatchByUserId,
+        actorName: transfer.dispatchByUserName,
+        recipientUserIds,
+        readByUserIds: [],
+        relatedAreaId: transfer.sourceAreaId,
+        targetAreaId: transfer.destinationAreaId,
+        relatedAssetId: transfer.assetId,
+        relatedTransferId: transfer.id,
+        actionTab: 'transfers',
+      });
+    } else if (prev && prev.status !== 'Received' && transfer.status === 'Received') {
+      // Goods Received -> notify sender, receiver, Sazzad, Rone, Habib, Kanta, Forhad, Omar & centers
+      const recipientUserIds = this.resolveRecipientUserIds({
+        extraEids: [OMAR_EID],
+        areaIds: [transfer.sourceAreaId, transfer.destinationAreaId],
+        extraUserIds: [transfer.dispatchByUserId, transfer.receivedByUserId || ''],
+      });
+      const receiverName = transfer.receivedByUserName || 'Receiver';
+      this.saveNotification({
+        id: `NTF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: 'transfer_received',
+        titleEn: `Goods Received: ${transfer.assetTitle}`,
+        titleBn: `পণ্য গ্রহণ নিশ্চিত (Goods Received): ${transfer.assetTitle}`,
+        messageEn: `${transfer.assetTitle} (${transfer.assetId}) sent by ${transfer.dispatchByUserName} (${srcEn}) has been received at ${destEn} by ${receiverName} (Condition: ${transfer.receiveCondition || 'Good'}).`,
+        messageBn: `${srcBn} থেকে ${transfer.dispatchByUserName}-এর পাঠানো ${transfer.assetTitle} (${transfer.assetId}) ${destBn}-এ গ্রহণ করেছেন ${receiverName} (অবস্থা: ${transfer.receiveCondition || 'Good'})।`,
+        createdAt: new Date().toISOString(),
+        actorUserId: transfer.receivedByUserId || transfer.dispatchByUserId,
+        actorName: receiverName,
+        recipientUserIds,
+        readByUserIds: [],
+        relatedAreaId: transfer.sourceAreaId,
+        targetAreaId: transfer.destinationAreaId,
+        relatedAssetId: transfer.assetId,
+        relatedTransferId: transfer.id,
+        actionTab: 'transfers',
+      });
     }
 
     this.notify();
@@ -2027,6 +2290,7 @@ class StorageService {
   public saveDisposal(request: DisposalRequest): void {
     const disposals = this.getDisposals();
     const index = disposals.findIndex((d) => d.id === request.id);
+    const prev = index >= 0 ? disposals[index] : undefined;
     if (index >= 0) {
       disposals[index] = request;
     } else {
@@ -2042,8 +2306,63 @@ class StorageService {
         asset.usabilityStatus = 'Disposed';
         asset.disposalDate = request.reviewDate || new Date().toISOString().slice(0, 10);
         asset.disposalReason = request.reasonEn || request.reviewComments || 'Approved for disposal';
-        this.saveAsset(asset);
+        this.saveAsset(asset, true);
       }
+    }
+
+    // Emit Notification for Disposal Request / Decision -> area disposed + Sazzad, Habib, Rone, Kanta, Forhad
+    const area = this.getAreas().find((a) => a.id === request.assignedAreaId);
+    const areaEn = area?.nameEn || 'Center';
+    const areaBn = area?.nameBn || 'কেন্দ্র';
+
+    if (!prev) {
+      const recipientUserIds = this.resolveRecipientUserIds({
+        areaIds: [request.assignedAreaId],
+        extraUserIds: [request.requestedByUserId],
+      });
+      this.saveNotification({
+        id: `NTF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: 'disposal_requested',
+        titleEn: `Asset Disposal Requested (${areaEn})`,
+        titleBn: `সম্পদ বাতিলের আবেদন (${areaBn})`,
+        messageEn: `${request.assetTitle} (${request.assetId}) at ${areaEn} was submitted for disposal by ${request.requestedByUserName}. Reason: ${request.reasonEn}.`,
+        messageBn: `${areaBn}-এর ${request.assetTitle} (${request.assetId}) বাতিলের আবেদন করেছেন ${request.requestedByUserName}। কারণ: ${request.reasonEn}।`,
+        createdAt: new Date().toISOString(),
+        actorUserId: request.requestedByUserId,
+        actorName: request.requestedByUserName,
+        recipientUserIds,
+        readByUserIds: [],
+        relatedAreaId: request.assignedAreaId,
+        relatedAssetId: request.assetId,
+        relatedDisposalId: request.id,
+        actionTab: 'disposals',
+      });
+    } else if (
+      prev.status === 'Pending HO Approval' &&
+      (request.status === 'Approved' || request.status === 'Rejected')
+    ) {
+      const recipientUserIds = this.resolveRecipientUserIds({
+        areaIds: [request.assignedAreaId],
+        extraUserIds: [request.requestedByUserId, request.reviewedByUserId || ''],
+      });
+      const isApproved = request.status === 'Approved';
+      this.saveNotification({
+        id: `NTF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: isApproved ? 'disposal_approved' : 'disposal_rejected',
+        titleEn: `Asset Disposal ${request.status}: ${request.assetTitle}`,
+        titleBn: `সম্পদ বাতিল ${isApproved ? 'অনুমোদিত' : 'প্রত্যাখ্যাত'}: ${request.assetTitle}`,
+        messageEn: `Disposal for ${request.assetTitle} (${request.assetId}) at ${areaEn} was ${request.status.toLowerCase()} by ${request.reviewedByUserName || 'Head Office'}.`,
+        messageBn: `${areaBn}-এর ${request.assetTitle} (${request.assetId}) বাতিলের আবেদনটি ${isApproved ? 'অনুমোদন' : 'প্রত্যাখ্যান'} করেছেন ${request.reviewedByUserName || 'হেড অফিস'}।`,
+        createdAt: new Date().toISOString(),
+        actorUserId: request.reviewedByUserId || request.requestedByUserId,
+        actorName: request.reviewedByUserName || 'Head Office',
+        recipientUserIds,
+        readByUserIds: [],
+        relatedAreaId: request.assignedAreaId,
+        relatedAssetId: request.assetId,
+        relatedDisposalId: request.id,
+        actionTab: 'disposals',
+      });
     }
 
     this.notify();
@@ -2079,6 +2398,7 @@ class StorageService {
     localStorage.removeItem(KEYS.ASSETS);
     localStorage.removeItem(KEYS.TRANSFERS);
     localStorage.removeItem(KEYS.DISPOSALS);
+    localStorage.removeItem(KEYS.NOTIFICATIONS);
     localStorage.removeItem(KEYS.ORG_PROFILE);
     this.initDefaults();
     this.notify();

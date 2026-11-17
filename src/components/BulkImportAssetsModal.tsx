@@ -729,6 +729,7 @@ export const BulkImportAssetsModal: React.FC<BulkImportAssetsModalProps> = ({
         storage.setAllAssets(deduplicateAssets([...uniqueFinal, ...filteredExisting]), false);
       }
 
+      storage.notifyBulkImport(uniqueFinal.length, currentUser);
       setSaveSuccess(true);
       onImportComplete();
 

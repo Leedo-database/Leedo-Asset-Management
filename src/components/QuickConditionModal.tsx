@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle2, MapPin, Wrench, X } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle2, Wrench, X } from 'lucide-react';
 import { Language, translations } from '../i18n/translations';
 import { Asset, UsabilityStatus, User } from '../types';
 
@@ -7,9 +7,33 @@ interface QuickConditionModalProps {
   asset: Asset | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (assetId: string, updates: { specificRoom: string; usabilityStatus: UsabilityStatus; remarks: string }) => void;
+  onSave: (
+    assetId: string,
+    updates: {
+      specificRoom: string;
+      usabilityStatus: UsabilityStatus;
+      remarks: string;
+      purchaseDate?: string;
+    }
+  ) => void;
   currentUser: User;
   lang: Language;
+}
+
+function toDateInputValue(raw?: string): string {
+  const trimmed = (raw || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10);
+  const mmmYy = trimmed.match(/^([A-Za-z]{3})-(\d{2,4})$/);
+  if (mmmYy) {
+    const months: Record<string, string> = {
+      jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+      jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+    };
+    const mo = months[mmmYy[1].toLowerCase()];
+    const yr = mmmYy[2].length === 2 ? `20${mmmYy[2]}` : mmmYy[2];
+    if (mo) return `${yr}-${mo}-01`;
+  }
+  return new Date().toISOString().split('T')[0];
 }
 
 export const QuickConditionModal: React.FC<QuickConditionModalProps> = ({
@@ -26,15 +50,17 @@ export const QuickConditionModal: React.FC<QuickConditionModalProps> = ({
     asset?.usabilityStatus === 'Disposed' ? 'Usable' : (asset?.usabilityStatus || 'Usable')
   );
   const [remarks, setRemarks] = useState(asset?.remarks || '');
+  const [purchaseDate, setPurchaseDate] = useState(() => toDateInputValue(asset?.purchaseDate));
 
-  // Keep form fields synced whenever target asset changes
+  // Keep form fields synced whenever target asset or modal open state changes
   React.useEffect(() => {
-    if (asset) {
+    if (asset && isOpen) {
       setSpecificRoom(asset.specificRoom || '');
       setUsabilityStatus(asset.usabilityStatus === 'Disposed' ? 'Usable' : asset.usabilityStatus);
       setRemarks(asset.remarks || '');
+      setPurchaseDate(toDateInputValue(asset.purchaseDate));
     }
-  }, [asset]);
+  }, [asset, isOpen]);
 
   if (!isOpen || !asset) return null;
 
@@ -44,6 +70,7 @@ export const QuickConditionModal: React.FC<QuickConditionModalProps> = ({
       specificRoom: specificRoom.trim(),
       usabilityStatus,
       remarks: remarks.trim(),
+      ...(currentUser.canManageAssets && purchaseDate ? { purchaseDate } : {}),
     });
     onClose();
   };
@@ -73,11 +100,31 @@ export const QuickConditionModal: React.FC<QuickConditionModalProps> = ({
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
             <p className="font-semibold text-slate-800">{asset.titleEn}</p>
             <p className="text-slate-500 text-[11px]">
-              {lang === 'bn'
+              {currentUser.canManageAssets
+                ? lang === 'bn'
+                  ? 'অনুমোদিত এডিটর হিসেবে আপনি রুম, অবস্থা, মন্তব্য এবং ক্রয়/এন্ট্রি তারিখ আপডেট করতে পারবেন।'
+                  : 'As an authorized editor, you can update specific room, condition, remarks, and Entry / Purchase Date.'
+                : lang === 'bn'
                 ? 'এরিয়া ইনচার্জ ও ফিল্ড স্টাফ শুধুমাত্র রুমের অবস্থান ও কার্যকরী অবস্থা আপডেট করতে পারেন।'
                 : 'Area Incharge & Field staff can adjust specific room location and usability condition.'}
             </p>
           </div>
+
+          {currentUser.canManageAssets && (
+            <div>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center space-x-1.5">
+                <Calendar className="w-3.5 h-3.5 text-red-600" />
+                <span>{t.purchaseDate}</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">

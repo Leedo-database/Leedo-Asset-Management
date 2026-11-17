@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock,
   MapPin,
+  PackageCheck,
   PlusCircle,
   Printer,
   Truck,
@@ -24,6 +25,8 @@ interface TransfersViewProps {
   onSaveTransfer: (transfer: AssetTransfer) => void;
   onRequestFromAsset?: Asset | null;
   onClearRequestAsset?: () => void;
+  onConfirmReceiveTransfer?: AssetTransfer | null;
+  onClearConfirmReceiveTransfer?: () => void;
 }
 
 export const TransfersView: React.FC<TransfersViewProps> = ({
@@ -35,6 +38,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   onSaveTransfer,
   onRequestFromAsset,
   onClearRequestAsset,
+  onConfirmReceiveTransfer,
+  onClearConfirmReceiveTransfer,
 }) => {
   const t = translations[lang];
 
@@ -75,6 +80,17 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       onClearRequestAsset?.();
     }
   }, [onRequestFromAsset, areas, onClearRequestAsset]);
+
+  // Auto-open Goods Received Modal if triggered from Notification or Asset row
+  useEffect(() => {
+    if (onConfirmReceiveTransfer) {
+      if (onConfirmReceiveTransfer.status === 'In-Transit') {
+        setSelectedForReceive(onConfirmReceiveTransfer);
+        setReceiveDateTime(new Date().toISOString().slice(0, 16));
+      }
+      onClearConfirmReceiveTransfer?.();
+    }
+  }, [onConfirmReceiveTransfer, onClearConfirmReceiveTransfer]);
 
   const isGlobal = currentUser.assignedAreaIds.includes('ALL');
 
@@ -244,10 +260,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         setSelectedForReceive(tr);
                         setReceiveDateTime(new Date().toISOString().slice(0, 16));
                       }}
-                      className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs flex items-center space-x-1"
+                      className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs flex items-center space-x-1.5 cursor-pointer"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>{t.receiveAndConfirm}</span>
+                      <PackageCheck className="w-4 h-4" />
+                      <span>
+                        {lang === 'bn'
+                          ? 'পণ্য গ্রহণ নিশ্চিত (Goods Received)'
+                          : 'Goods Received'}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -314,17 +334,39 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               : 'bg-blue-100 text-blue-800 animate-pulse'
                           }`}
                         >
-                          {tr.status}
+                          {tr.status === 'Received' ? 'Goods Received' : tr.status}
                         </span>
+                        {tr.status === 'Received' && tr.receivedByUserName && (
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            by {tr.receivedByUserName} ({tr.receiveCondition || 'Good'})
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
-                        <button
-                          onClick={() => setSelectedForGatePass(tr)}
-                          className="p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                          title={t.printGatePass}
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end space-x-1.5">
+                          {tr.status === 'In-Transit' &&
+                            (isGlobal || currentUser.assignedAreaIds.includes(tr.destinationAreaId)) && (
+                              <button
+                                onClick={() => {
+                                  setSelectedForReceive(tr);
+                                  setReceiveDateTime(new Date().toISOString().slice(0, 16));
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-colors inline-flex items-center space-x-1 cursor-pointer shadow-2xs"
+                                title={lang === 'bn' ? 'পণ্য গ্রহণ নিশ্চিত করুন' : 'Confirm Goods Received'}
+                              >
+                                <PackageCheck className="w-3.5 h-3.5" />
+                                <span>{lang === 'bn' ? 'Goods Received' : 'Goods Received'}</span>
+                              </button>
+                            )}
+
+                          <button
+                            onClick={() => setSelectedForGatePass(tr)}
+                            className="p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title={t.printGatePass}
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -541,9 +583,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition-colors"
+                  className="px-5 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition-colors cursor-pointer flex items-center space-x-1.5"
                 >
-                  {lang === 'bn' ? 'প্রাপ্তি নিশ্চিত করুন ও কার্যকর করুন' : 'Confirm & Activate in Center'}
+                  <PackageCheck className="w-4 h-4" />
+                  <span>
+                    {lang === 'bn'
+                      ? 'Goods Received নিশ্চিত করুন ও গ্রহণ করুন'
+                      : 'Confirm Goods Received & Activate'}
+                  </span>
                 </button>
               </div>
             </form>
